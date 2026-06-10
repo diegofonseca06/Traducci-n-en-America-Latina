@@ -267,6 +267,64 @@
     </section>
 
 
+    <section id="seccionVis3" class="visualization-section bg-alternate reveal">
+        <div class="container">
+            <div class="row align-items-center">
+                
+                <div class="col-12 delay-text mb-4 text-center">
+                    <h2 class="chart-title">La Gravedad del Lenguaje: Diversidad y Flujos de Traducción</h2>
+                    <p class="chart-description text-start" style="max-width: 900px; margin: 0 auto;">
+                        El ecosistema editorial latinoamericano gravita en torno a flujos lingüísticos asimétricos. Este análisis multifactorial de doble eje coordinado revela de forma simultánea la <strong>diversidad interna de las traducciones (proporciones relativas en barra)</strong> y la <strong>escala total de mercado (volumen absoluto en curva)</strong> a lo largo de las distintas clasificaciones del conocimiento.
+                        <br><br>
+                        <em>Interacción:</em> Utilice los interruptores interactivos para aislar o superponer las barras de proporciones y la curva de volumen neto. El eje horizontal organiza los países dinámicamente de menor a mayor producción bajo los criterios activos. <strong>Posicione el cursor sobre los segmentos de las barras</strong> para explorar las raíces idiomáticas y el Top 5 de sellos editoriales detrás de cada flujo cultural.
+                    </p>
+                </div>
+                
+                <div class="col-12 mb-4 d-flex flex-wrap justify-content-center gap-4 align-items-end">
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Escenario Lingüístico:</label>
+                        <select id="filtroFlujoVis3" class="custom-select" style="font-size: 1.1rem;">
+                            <option value="ingles">Traducidas DESDE el Inglés</option>
+                            <option value="portugues">Traducidas DESDE el Portugués</option>
+                            <option value="espanol">Traducidas HACIA el Español</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Periodo Histórico:</label>
+                        <select id="filtroAnoVis3" class="custom-select" style="font-size: 1.1rem;">
+                            <option value="TODOS">Todos los años históricos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Clasificación Temática (Dewey):</label>
+                        <select id="filtroDeweyVis3" class="custom-select" style="font-size: 1.1rem;">
+                            <option value="TODOS">Todas las categorías temáticas</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box pb-2" style="border-left: 2px solid #eee; padding-left: 20px;">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-family: sans-serif;">Modo de Visualización:</label>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="togglePorcentajes" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="togglePorcentajes" style="color:#006DF7;">Barras (% Idiomas)</label>
+                        </div>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="toggleCantidades" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="toggleCantidades" style="color:#E74C3C;">Curva (Cantidades)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div id="vis3" class="chart-container" style="height: 650px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
     <script>
         // Lógica de Scroll Efecto Revelar
         function reveal() {
@@ -706,6 +764,208 @@
             chart1.setOption(option, true);
         }
 
+
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 3 (Dual-Axis: Proporciones % + Volumen Absoluto)
+        // =========================================================
+        var chart3 = echarts.init(document.getElementById('vis3'));
+        var rawDataV3 = [];
+
+        function renderVis3() {
+            let flujo = document.getElementById('filtroFlujoVis3').value;
+            let yearFilter = document.getElementById('filtroAnoVis3').value;
+            let deweyFilter = document.getElementById('filtroDeweyVis3').value;
+            let showPercents = document.getElementById('togglePorcentajes').checked;
+            let showQuantities = document.getElementById('toggleCantidades').checked;
+
+            // Filtrado primario por escenario, dewey y año sobre la estructura unificada
+            let data = rawDataV3.filter(d => d['ESCENARIO'] === flujo);
+            if (yearFilter !== 'TODOS') data = data.filter(d => d['ANO'] === yearFilter);
+            if (deweyFilter !== 'TODOS') data = data.filter(d => d['DEWEY PRINCIPAL'] === deweyFilter);
+
+            // Mapeo paramétrico de variables objetivo según carril lingüístico seleccionado
+            let colIdioma = (flujo === 'espanol') ? 'IDIOMA DE ORIGEN' : 'IDIOMA PUBLICACION';
+            let tituloTooltip = (flujo === 'espanol') ? 'Idioma Original de la Obra' : 'Idioma de Publicación Final';
+
+            // 1. Calcular volumen absoluto acumulado por territorio para ordenamiento del Eje X
+            let countryTotals = {};
+            data.forEach(d => {
+                let pais = d['PAIS'];
+                if (pais && pais !== 'SIN DATO' && pais.trim() !== '') {
+                    countryTotals[pais] = (countryTotals[pais] || 0) + parseInt(d['CANTIDAD'] || 0);
+                }
+            });
+
+            // Ordenamiento estructural estable del eje horizontal: de MENOR a MAYOR volumen nítido
+            let sortedCountries = Object.keys(countryTotals)
+                .map(k => ({ name: k, value: countryTotals[k] }))
+                .sort((a, b) => a.value - b.value);
+
+            let paisesXAxis = sortedCountries.map(c => c.name);
+            let cantidadesLine = sortedCountries.map(c => c.value);
+
+            // 2. Algoritmo Matricial Cruzado: Determinar el Set Unificado Top 8 de Idiomas por Territorio
+            let masterLanguageSet = new Set();
+            
+            paisesXAxis.forEach(pais => {
+                let dataPais = data.filter(d => d['PAIS'] === pais);
+                let idmCounts = {};
+                
+                dataPais.forEach(d => {
+                    let idm = d[colIdioma];
+                    if (idm && idm !== 'SIN DATO' && idm.trim() !== '' && idm !== 'SIN IDENTIFICAR') {
+                        idmCounts[idm] = (idmCounts[idm] || 0) + parseInt(d['CANTIDAD'] || 0);
+                    }
+                });
+
+                // Extraer los 8 idiomas dominantes locales y fusionarlos en el set global unificado
+                let top8Pais = Object.keys(idmCounts).sort((a, b) => idmCounts[b] - idmCounts[a]).slice(0, 8);
+                top8Pais.forEach(idm => masterLanguageSet.add(idm));
+            });
+
+            let unifiedLanguages = Array.from(masterLanguageSet);
+            
+            // 3. Estructuración y cálculo distributivo de series relativas (%) y absolutas
+            let seriesData = [];
+            
+            if (showPercents) {
+                let seriesDict = {};
+                unifiedLanguages.forEach(idm => seriesDict[idm] = []);
+                seriesDict['Otros'] = [];
+
+                paisesXAxis.forEach(pais => {
+                    let dataPais = data.filter(d => d['PAIS'] === pais);
+                    let totalPais = countryTotals[pais];
+                    
+                    let idmCounts = {};
+                    dataPais.forEach(d => {
+                        let idm = d[colIdioma];
+                        if (idm && idm !== 'SIN DATO' && idm.trim() !== '') {
+                            idmCounts[idm] = (idmCounts[idm] || 0) + parseInt(d['CANTIDAD'] || 0);
+                        }
+                    });
+
+                    // Cálculo relativo indexado para el set unificado
+                    unifiedLanguages.forEach(idm => {
+                        let val = idmCounts[idm] || 0;
+                        let pct = totalPais > 0 ? (val / totalPais) * 100 : 0;
+                        seriesDict[idm].push({ value: pct.toFixed(2), realValue: val, idioma: idm, pais: pais });
+                    });
+
+                    // Consolidación e inyección matemática del residuo porcentual ("Otros")
+                    let sumOtros = 0;
+                    dataPais.forEach(d => {
+                        let idm = d[colIdioma];
+                        if (!unifiedLanguages.includes(idm)) {
+                            sumOtros += parseInt(d['CANTIDAD'] || 0);
+                        }
+                    });
+
+                    let pctOtros = totalPais > 0 ? (sumOtros / totalPais) * 100 : 0;
+                    seriesDict['Otros'].push({ value: pctOtros.toFixed(2), realValue: sumOtros, idioma: 'Otros', pais: pais });
+                });
+
+                // Construcción matricial en el ecosistema de componentes de ECharts
+                unifiedLanguages.forEach(idm => {
+                    seriesData.push({ name: idm, type: 'bar', stack: 'total', data: seriesDict[idm], emphasis: { focus: 'series' } });
+                });
+                seriesData.push({ name: 'Otros', type: 'bar', stack: 'total', color: '#D5D8DC', data: seriesDict['Otros'], emphasis: { focus: 'series' } });
+            }
+
+            if (showQuantities) {
+                seriesData.push({
+                    name: 'Volumen Total', type: 'line', yAxisIndex: 1,
+                    data: cantidadesLine,
+                    symbolSize: 8, itemStyle: { color: '#E74C3C', borderWidth: 2 },
+                    lineStyle: { width: 3, shadowColor: 'rgba(0,0,0,0.15)', shadowBlur: 4 }
+                });
+            }
+
+            var option3 = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    formatter: function(params) {
+                        if (params.seriesType === 'line') {
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#E74C3C; font-size:1.1em;">${params.name}</strong><br/>Volumen Corriente Total: <b>${params.value.toLocaleString()}</b> publicaciones</div>`;
+                        }
+
+                        let pais = params.data.pais;
+                        let idiomaStr = params.data.idioma;
+                        let realVal = params.data.realValue;
+                        let pct = params.value;
+
+                        // Extracción granular de sellos editoriales competitivos para el Tooltip activo
+                        let subData = [];
+                        if (idiomaStr === 'Otros') {
+                            subData = data.filter(d => d['PAIS'] === pais && !unifiedLanguages.includes(d[colIdioma]));
+                        } else {
+                            subData = data.filter(d => d['PAIS'] === pais && d[colIdioma] === idiomaStr);
+                        }
+
+                        let edits = {};
+                        subData.forEach(d => {
+                            let e = d['EDITORIAL'];
+                            if (e && e !== 'SIN DATO' && e.trim() !== '') edits[e] = (edits[e] || 0) + parseInt(d['CANTIDAD'] || 0);
+                        });
+                        
+                        // Exclusión del nodo artificial 'OTROS' del tooltip corporativo
+                        let topEdits = Object.keys(edits)
+                            .map(k => ({ n: k, v: edits[k] }))
+                            .filter(e => e.n !== 'OTROS')
+                            .sort((a, b) => b.v - a.v)
+                            .slice(0, 5);
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px;">`;
+                        h += `<strong style="font-family:'Playfair Display', serif; font-size:1.2em; color:${params.color}; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">${pais}</strong>`;
+                        h += `<span style="color:#817BA6; font-weight:bold;">${tituloTooltip}:</span> <b>${idiomaStr}</b><br/>`;
+                        h += `Producción Localizada: <b>${realVal.toLocaleString()}</b> obras (${pct}%)<br><br>`;
+                        
+                        if (topEdits.length > 0) {
+                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Top 5 Agentes en esta Ruta:</span><br/>`;
+                            topEdits.forEach((e, i) => {
+                                h += `<span style="display:block; margin-top:4px; white-space: normal; line-height:1.2;"><b>${i+1}.</b> ${e.n} <b>(${e.v.toLocaleString()})</b></span>`;
+                            });
+                        } else {
+                            h += `<span style="color:#817BA6; font-style:italic; font-size:11px;">No se especifican detalles corporativos para este cruce.</span>`;
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                legend: {
+                    type: 'scroll',
+                    bottom: 0,
+                    textStyle: { fontFamily: 'Inter', fontSize: 10 },
+                    pageIconColor: '#006DF7'
+                },
+                grid: { left: '4%', right: '4%', bottom: '18%', top: '10%', containLabel: true },
+                xAxis: {
+                    type: 'category', data: paisesXAxis,
+                    axisLabel: { interval: 0, rotate: 45, fontFamily: 'Inter', fontSize: 10, fontWeight: '600' }
+                },
+                yAxis: [
+                    {
+                        type: 'value', max: 100, show: showPercents,
+                        name: 'Distribución Porcentual (%)', nameTextStyle: axisTextStyle,
+                        axisLabel: { formatter: '{value} %' },
+                        splitLine: { lineStyle: { color: '#f5f5f5' } }
+                    },
+                    {
+                        type: 'value', show: showQuantities,
+                        name: 'Volumen Total de Publicaciones', nameTextStyle: axisTextStyle,
+                        splitLine: { show: false }
+                    }
+                ],
+                series: seriesData
+            };
+
+            chart3.setOption(option3, true);
+        }
+
+        // Vinculación de manejadores reactivos para los Switches de control de ejes
+        document.getElementById('togglePorcentajes').addEventListener('change', renderVis3);
+        document.getElementById('toggleCantidades').addEventListener('change', renderVis3);
         
 
         // =========================================================
@@ -798,6 +1058,37 @@
                 
                 // Inicialización primaria del gráfico
                 renderVis1('TODOS');
+            }
+        });
+
+        // =========================================================
+        // PARSEO E INYECCIÓN DE DATOS PARA GRAVEDAD DEL LENGUAJE (VIS3)
+        // =========================================================
+        Papa.parse('Base_Gravedad_Ultra_Resumida.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawDataV3 = results.data;
+                
+                let selectFlujo = document.getElementById('filtroFlujoVis3');
+                let selectAno = document.getElementById('filtroAnoVis3');
+                let selectDewey = document.getElementById('filtroDeweyVis3');
+                
+                // Mapeo unificado y ordenado de dimensiones sin duplicados
+                let embeddingAnos = [...new Set(rawDataV3.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV3.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                
+                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                
+                // Vinculación de escuchadores de cambio para filtros concurrentes
+                selectFlujo.addEventListener('change', renderVis3);
+                selectAno.addEventListener('change', renderVis3);
+                selectDewey.addEventListener('change', renderVis3);
+                
+                // Renderizado inicial coordinado
+                renderVis3();
             }
         });
 
