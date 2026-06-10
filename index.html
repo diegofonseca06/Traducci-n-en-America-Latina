@@ -325,6 +325,59 @@
         </div>
     </section>
 
+    <section id="seccionVis4" class="visualization-section reveal">
+        <div class="container">
+            <div class="row align-items-center">
+                
+                <div class="col-12 delay-text mb-4 text-center">
+                    <h2 class="chart-title">Cronología de la Traducción: Diversidad y Volumen</h2>
+                    <p class="chart-description text-start" style="max-width: 900px; margin: 0 auto;">
+                        La bibliodiversidad y la adopción de lenguas extranjeras mutan a lo largo de las corrientes históricas. Este análisis adaptativo de doble eje permite observar simultáneamente la <strong>evolución proporcional de las lenguas de origen</strong> (barras apiladas al 100% en el eje izquierdo) en contraste directo con el <strong>volumen neto de publicaciones traducidas</strong> (curva en el eje derecho). 
+                        <br><br>
+                        Para cada criterio geográfico y conceptual seleccionado, el sistema ejecuta un algoritmo de unificación estructural: identifica los 15 idiomas de origen más influyentes por año y los consolida para revelar las principales tendencias de importación de conocimiento en el continente.
+                        <br><br>
+                        <em>Interacción:</em> Utilice los selectores dinámicos para aislar las métricas por <strong>País de Publicación</strong> o por <strong>Clasificación Temática (Dewey)</strong>. Use los interruptores interactivos para ocultar o mostrar las capas de porcentajes o cantidades. <strong>Posicione el cursor sobre las franjas temporales</strong> para descubrir el volumen real y el <strong>Top 5 de editoriales</strong> líderes en dicho flujo lingüístico.
+                    </p>
+                </div>
+                
+                <div class="col-12 mb-4 d-flex flex-wrap justify-content-center gap-4 align-items-end">
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">País de Publicación:</label>
+                        <select id="filtroPaisVis4" class="custom-select" style="font-size: 1.1rem; min-width: 250px;">
+                            <option value="TODOS">Todos los países (Continental)</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría Temática (Dewey):</label>
+                        <select id="filtroDeweyVis4" class="custom-select" style="font-size: 1.1rem; min-width: 250px;">
+                            <option value="TODOS">Todas las categorías temáticas</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box pb-2" style="border-left: 2px solid #eee; padding-left: 20px;">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-family: sans-serif;">Capas de Datos:</label>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="togglePorcentajesV4" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="togglePorcentajesV4" style="color:#006DF7;">Barras (% Idiomas)</label>
+                        </div>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="toggleCantidadesV4" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="toggleCantidadesV4" style="color:#E74C3C;">Curva (Volumen)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div id="vis4" class="chart-container" style="height: 650px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    
+
     <script>
         // Lógica de Scroll Efecto Revelar
         function reveal() {
@@ -959,6 +1012,164 @@
         // Vinculación de manejadores reactivos para los Switches de control de ejes
         document.getElementById('togglePorcentajes').addEventListener('change', renderVis3);
         document.getElementById('toggleCantidades').addEventListener('change', renderVis3);
+
+
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 4 (Cronología de Idiomas con Doble Eje Coordinado)
+        // =========================================================
+        var chart4 = echarts.init(document.getElementById('vis4'));
+        var rawDataV4 = [];
+
+        function renderVis4() {
+            let paisFilter = document.getElementById('filtroPaisVis4').value;
+            let deweyFilter = document.getElementById('filtroDeweyVis4').value;
+            let showPercents = document.getElementById('togglePorcentajesV4').checked;
+            let showQuantities = document.getElementById('toggleCantidadesV4').checked;
+
+            // 1. Filtrado inicial y establecimiento estricto del horizonte temporal
+            let data = rawDataV4.filter(d => d['ANO'] && d['ANO'] >= '2010' && d['ANO'] <= '2025');
+            if (paisFilter !== 'TODOS') data = data.filter(d => d['PAIS'] === paisFilter);
+            if (deweyFilter !== 'TODOS') data = data.filter(d => d['DEWEY PRINCIPAL'] === deweyFilter);
+
+            let yearsXAxis = [...new Set(data.map(d => d['ANO']))].sort();
+            
+            // 2. Cálculo de Volumen Total Absoluto por año para la curva de control
+            let yearlyTotals = yearsXAxis.map(year => {
+                return data.filter(d => d['ANO'] === year)
+                           .reduce((sum, row) => sum + parseInt(row['CANTIDAD'] || 0), 0);
+            });
+
+            // 3. Algoritmo Topológico: Unificación Dinámica del Top 15 de Idiomas de Origen
+            let masterLanguageSet = new Set();
+            
+            yearsXAxis.forEach(year => {
+                let dataYear = data.filter(d => d['ANO'] === year);
+                let idmCounts = {};
+                dataYear.forEach(d => {
+                    let idm = d['IDIOMA DE ORIGEN'];
+                    if (idm && idm !== 'SIN DATO' && idm.trim() !== '' && idm !== 'SIN IDENTIFICAR') {
+                        idmCounts[idm] = (idmCounts[idm] || 0) + parseInt(d['CANTIDAD'] || 0);
+                    }
+                });
+                Object.keys(idmCounts).sort((a,b) => idmCounts[b] - idmCounts[a]).slice(0, 15).forEach(l => masterLanguageSet.add(l));
+            });
+
+            let unifiedLanguages = Array.from(masterLanguageSet);
+            let seriesData = [];
+
+            // 4. Construcción distributiva de series relativas (%)
+            if (showPercents) {
+                let seriesDict = {};
+                unifiedLanguages.forEach(l => seriesDict[l] = []);
+                seriesDict['Otros'] = [];
+
+                yearsXAxis.forEach((year, idx) => {
+                    let dataYear = data.filter(d => d['ANO'] === year);
+                    let totalYear = yearlyTotals[idx];
+                    let langCounts = {};
+                    
+                    dataYear.forEach(d => {
+                        let idm = d['IDIOMA DE ORIGEN'];
+                        if (idm && idm.trim() !== '') {
+                            langCounts[idm] = (langCounts[idm] || 0) + parseInt(d['CANTIDAD'] || 0);
+                        }
+                    });
+
+                    unifiedLanguages.forEach(l => {
+                        let val = langCounts[l] || 0;
+                        let pct = totalYear > 0 ? (val / totalYear * 100) : 0;
+                        seriesDict[l].push({ value: pct.toFixed(2), realValue: val, year: year, idioma: l });
+                    });
+
+                    // Consolidar remanentes lingüísticos fuera del catálogo unificado master
+                    let sumOtros = 0;
+                    dataYear.forEach(d => {
+                        let idm = d['IDIOMA DE ORIGEN'];
+                        if (!unifiedLanguages.includes(idm)) sumOtros += parseInt(d['CANTIDAD'] || 0);
+                    });
+                    let pctOtros = totalYear > 0 ? (sumOtros / totalYear * 100) : 0;
+                    seriesDict['Otros'].push({ value: pctOtros.toFixed(2), realValue: sumOtros, year: year, idioma: 'Otros' });
+                });
+
+                unifiedLanguages.forEach(l => {
+                    seriesData.push({ name: l, type: 'bar', stack: 'total', data: seriesDict[l], emphasis: { focus: 'series' } });
+                });
+                seriesData.push({ name: 'Otros', type: 'bar', stack: 'total', color: '#D5D8DC', data: seriesDict['Otros'], emphasis: { focus: 'series' } });
+            }
+
+            // 5. Construcción de la Serie Absoluta en el eje secundario coordinado
+            if (showQuantities) {
+                seriesData.push({
+                    name: 'Volumen Total', type: 'line', yAxisIndex: 1, data: yearlyTotals,
+                    symbolSize: 10, itemStyle: { color: '#E74C3C' }, lineStyle: { width: 4, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.2)' }
+                });
+            }
+
+            var option4 = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    formatter: function(params) {
+                        if (params.seriesType === 'line') {
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong>Año de Producción: ${params.name}</strong><br/>Volumen Neto: <b>${params.value.toLocaleString()}</b> obras traducidas</div>`;
+                        }
+
+                        let d = params.data;
+                        let yearData = data.filter(r => r['ANO'] === d.year);
+                        let subData = (d.idioma === 'Otros') 
+                            ? yearData.filter(r => !unifiedLanguages.includes(r['IDIOMA DE ORIGEN']))
+                            : yearData.filter(r => r['IDIOMA DE ORIGEN'] === d.idioma);
+
+                        // Agregación y mapeo para Top 5 Editoriales
+                        let edits = {};
+                        subData.forEach(r => { 
+                            let e = r['EDITORIAL']; 
+                            if (e && e !== 'SIN DATO' && e.trim() !== '') edits[e] = (edits[e] || 0) + parseInt(r['CANTIDAD'] || 0); 
+                        });
+                        
+                        // Exclusión explícita de la etiqueta residual genérica 'OTROS'
+                        let topEdits = Object.keys(edits)
+                            .map(k=>({n:k, v:edits[k]}))
+                            .filter(e => e.n !== 'OTROS')
+                            .sort((a,b)=>b.v - a.v)
+                            .slice(0, 5);
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px;">`;
+                        h += `<strong style="font-family:'Playfair Display', serif; font-size:1.2em; color:${params.color}; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">${d.idioma} (${d.year})</strong>`;
+                        h += `Proporción Anual: <b>${params.value}%</b> del catálogo<br/>`;
+                        h += `Volumen Físico: <b>${d.realValue.toLocaleString()}</b> publicaciones<br><br>`;
+                        
+                        if (topEdits.length > 0) {
+                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Líderes de Edición en este Idioma:</span><br/>`;
+                            topEdits.forEach((e, i) => {
+                                h += `<span style="display:block; margin-top:4px; white-space: normal; line-height:1.2;"><b>${i+1}.</b> ${e.n} <b>(${e.v.toLocaleString()})</b></span>`;
+                            });
+                        } else {
+                            h += `<span style="color:#817BA6; font-style:italic; font-size:11px;">No se especifican detalles de sellos para esta franja.</span>`;
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                legend: { type: 'scroll', bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 10 } },
+                grid: { left: '4%', right: '4%', bottom: '18%', top: '10%', containLabel: true },
+                xAxis: { type: 'category', data: yearsXAxis, axisLabel: { fontFamily: 'Inter', fontWeight: '600' } },
+                yAxis: [
+                    { type: 'value', max: 100, show: showPercents, name: 'Distribución Porcentual (%)', nameTextStyle: axisTextStyle, axisLabel: { formatter: '{value}%' } },
+                    { type: 'value', show: showQuantities, name: 'Cantidad Bruta de Publicaciones', nameTextStyle: axisTextStyle, splitLine: { show: false } }
+                ],
+                color: ['#1F0F80', '#006DF7', '#817BA6', '#17142B', '#A09CBE', '#3498DB', '#27AE60', '#F1C40F', '#E67E22', '#9B59B6', '#1ABC9C', '#D35400', '#2980B9', '#16A085', '#F39C12'],
+                series: seriesData
+            };
+
+            chart4.setOption(option4, true);
+        }
+
+        // Registro reactivo de los switches controladores de capas de ejes
+        document.getElementById('togglePorcentajesV4').addEventListener('change', renderVis4);
+        document.getElementById('toggleCantidadesV4').addEventListener('change', renderVis4);
+
+
         
 
         // =========================================================
@@ -1083,6 +1294,35 @@
             }
         });
 
+
+        // =========================================================
+        // PARSEO E INYECCIÓN DE DATOS PARA CRONOLOGÍA DE TRADUCCIÓN (VIS4)
+        // =========================================================
+        Papa.parse('Base_Cronologia_Ultra_Resumida.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawDataV4 = results.data;
+                
+                let selectPais = document.getElementById('filtroPaisVis4');
+                let selectDewey = document.getElementById('filtroDeweyVis4');
+                
+                // Mapeo unificado y ordenamiento de dimensiones sin registros duplicados
+                let embeddingPaises = [...new Set(rawDataV4.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'SIN DATO').sort();
+                let embeddingDeweys = [...new Set(rawDataV4.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                
+                embeddingPaises.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p; selectPais.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                
+                // Vinculación de disparadores de eventos de cambio cruzados
+                selectPais.addEventListener('change', renderVis4);
+                selectDewey.addEventListener('change', renderVis4);
+                
+                // Renderizado inicial coordinado de la visualización cronológica
+                renderVis4();
+            }
+        });
         
 
         window.addEventListener('resize', function() { 
