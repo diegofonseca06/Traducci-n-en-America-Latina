@@ -376,6 +376,45 @@
         </div>
     </section>
 
+    <section id="seccionVis5" class="visualization-section bg-alternate reveal">
+        <div class="container">
+            <div class="row align-items-center flex-row-reverse">
+                
+                <div class="col-lg-5 delay-text">
+                    <h2 class="chart-title">Ecosistemas de Origen: La Especialización Editorial</h2>
+                    <p class="chart-description">
+                        No todas las lenguas de origen son abordadas ni traducidas por los mismos actores institucionales. Este análisis devela el grado de especialización del ecosistema continental, comparando frente a frente el volumen total de traducciones asumido por las <strong>Editoriales Comerciales</strong> versus la infraestructura de las <strong>Prensas Universitarias</strong> para cada idioma.
+                        <br><br>
+                        El gráfico de barras horizontales organiza los idiomas de forma dinámica de mayor a menor volumen general según los criterios activos, permitiendo aislar el comportamiento de los flujos culturales dominantes.
+                        <br><br>
+                        <em>Interacción:</em> Utilice los selectores cruzados para explorar el comportamiento en mercados geográficos, ventanas de tiempo o áreas conceptuales (Clasificación Dewey). <strong>Posicione el cursor sobre cualquiera de las barras</strong> para desplegar instantáneamente el volumen neto y el <strong>Top 5 de grupos editoriales</strong> que lideran la traducción en dicho idioma y sector.
+                    </p>
+                    
+                    <div class="filter-container">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Filtrar por Ámbito Geográfico:</label>
+                        <select id="filtroPaisVis5" class="custom-select mb-3">
+                            <option value="TODOS">Todos los países</option>
+                        </select>
+
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Filtrar por Año de Publicación:</label>
+                        <select id="filtroAnoVis5" class="custom-select mb-3">
+                            <option value="TODOS">Todos los años</option>
+                        </select>
+
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Filtrar por Clasificación Temática (Dewey):</label>
+                        <select id="filtroDeweyVis5" class="custom-select">
+                            <option value="TODOS">Todas las categorías temáticas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div id="vis5" class="chart-container" style="height: 600px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
     
 
     <script>
@@ -1169,7 +1208,118 @@
         document.getElementById('togglePorcentajesV4').addEventListener('change', renderVis4);
         document.getElementById('toggleCantidadesV4').addEventListener('change', renderVis4);
 
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 5 (Barras Horizontales Agrupadas con Filtro Dewey)
+        // =========================================================
+        var chart5 = echarts.init(document.getElementById('vis5'));
+        var rawDataV5 = [];
 
+        function renderVis5() {
+            let paisFilter = document.getElementById('filtroPaisVis5').value;
+            let anoFilter = document.getElementById('filtroAnoVis5').value;
+            let deweyFilter = document.getElementById('filtroDeweyVis5').value;
+
+            let filteredData = rawDataV5;
+            
+            // Ejecución parametrizada de filtros concurrentes en cascada
+            if (paisFilter !== 'TODOS') filteredData = filteredData.filter(d => d['PAIS'] === paisFilter);
+            if (anoFilter !== 'TODOS') filteredData = filteredData.filter(d => d['ANO'] === anoFilter);
+            if (deweyFilter !== 'TODOS') filteredData = filteredData.filter(d => d['DEWEY PRINCIPAL'] === deweyFilter);
+
+            // Identificar y agregar volumen bruto por idioma de origen
+            let idiomasTotales = {};
+            filteredData.forEach(d => {
+                let idioma = d['IDIOMA DE ORIGEN'];
+                if (idioma && idioma !== 'SIN DATO' && idioma.trim() !== '' && idioma !== 'SIN IDENTIFICAR') {
+                    idiomasTotales[idioma] = (idiomasTotales[idioma] || 0) + parseInt(d['CANTIDAD'] || 0);
+                }
+            });
+
+            // Extraer estrictamente el Top 8 de idiomas para salvaguardar la escala visual vertical
+            let topIdiomasObj = Object.keys(idiomasTotales)
+                .map(k => ({ name: k, total: idiomasTotales[k] }))
+                .sort((a,b) => b.total - a.total)
+                .slice(0, 8);
+            
+            // Inversión posicional para situar el flujo dominante en la cúspide del gráfico horizontal
+            topIdiomasObj.reverse(); 
+            let idiomasNombres = topIdiomasObj.map(i => i.name);
+
+            // Discriminación lineal de datos según agentes editoriales clasificados
+            let dataComercial = [];
+            let dataUniversitaria = [];
+
+            idiomasNombres.forEach(idioma => {
+                let sumC = filteredData.filter(d => d['IDIOMA DE ORIGEN'] === idioma && d['TIPO_AGENTE'] === 'EDITORIAL COMERCIAL')
+                                       .reduce((sum, row) => sum + parseInt(row['CANTIDAD'] || 0), 0);
+                let sumU = filteredData.filter(d => d['IDIOMA DE ORIGEN'] === idioma && d['TIPO_AGENTE'] === 'EDITORIAL UNIVERSITARIA')
+                                       .reduce((sum, row) => sum + parseInt(row['CANTIDAD'] || 0), 0);
+                dataComercial.push(sumC);
+                dataUniversitaria.push(sumU);
+            });
+
+            var option5 = {
+                tooltip: { 
+                    trigger: 'item', 
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', 
+                    borderColor: '#1F0F80', 
+                    textStyle: { color: '#17142B' },
+                    formatter: function (params) {
+                        let idiomaStr = params.name;
+                        let agenteStr = params.seriesName === 'Comercial' ? 'EDITORIAL COMERCIAL' : 'EDITORIAL UNIVERSITARIA';
+                        
+                        let specificData = filteredData.filter(d => d['IDIOMA DE ORIGEN'] === idiomaStr && d['TIPO_AGENTE'] === agenteStr);
+                        
+                        let editoriales = {};
+                        specificData.forEach(d => {
+                            let ed = d['EDITORIAL'];
+                            if (ed && ed !== 'SIN DATO' && ed.trim() !== '') {
+                                editoriales[ed] = (editoriales[ed] || 0) + parseInt(d['CANTIDAD'] || 0);
+                            }
+                        });
+
+                        // Exclusión explícita de la etiqueta residual genérica 'OTROS' del tooltip nominal
+                        let topEdits = Object.keys(editoriales)
+                            .map(k => ({ n: k, c: editoriales[k] }))
+                            .filter(e => e.n !== 'OTROS')
+                            .sort((a,b) => b.c - a.c)
+                            .slice(0, 5);
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:240px;">`;
+                        h += `<strong style="font-family: 'Playfair Display', serif; font-size: 1.2em; color: ${params.color}; border-bottom: 1px solid #ccc; display: block; margin-bottom: 8px; padding-bottom: 5px;">${idiomaStr} - ${params.seriesName}</strong>`;
+                        h += `Obras Traducidas: <b>${params.value.toLocaleString()}</b> publicaciones<br><br>`;
+                        
+                        if (topEdits.length > 0) {
+                            h += `<span style="color:#817BA6; font-weight:bold; font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Top 5 Sellos Editoriales:</span><br/>`;
+                            topEdits.forEach((e, i) => {
+                                h += `<span style="display:block; margin-top:4px; white-space: normal; line-height:1.2;"><b>${i+1}.</b> ${e.n} <b>(${e.c.toLocaleString()})</b></span>`;
+                            });
+                        } else {
+                            h += `<span style="font-size: 0.9em; font-style: italic; color: #817BA6;">Catálogo corporativo detallado sin especificar en este corte.</span>`;
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                legend: { data: ['Comercial', 'Universitaria'], bottom: 0, textStyle: { fontFamily: 'Lora', color: '#817BA6' } },
+                grid: { left: '4%', right: '8%', bottom: '15%', top: '5%', containLabel: true },
+                xAxis: { 
+                    type: 'value', 
+                    splitLine: { lineStyle: { color: '#f5f5f5' } },
+                    name: 'Cantidad de Obras Traducidas', nameLocation: 'middle', nameGap: 40, nameTextStyle: axisTextStyle
+                },
+                yAxis: { 
+                    type: 'category', data: idiomasNombres, 
+                    axisLabel: { fontFamily: 'Inter', fontSize: 11, fontWeight: '600' }
+                },
+                color: ['#006DF7', '#1F0F80'], 
+                series: [
+                    { name: 'Comercial', type: 'bar', data: dataComercial, itemStyle: { borderRadius: [0, 3, 3, 0] }, emphasis: { focus: 'series' } },
+                    { name: 'Universitaria', type: 'bar', data: dataUniversitaria, itemStyle: { borderRadius: [0, 3, 3, 0] }, emphasis: { focus: 'series' } }
+                ]
+            };
+            chart5.setOption(option5, true);
+        }
         
 
         // =========================================================
@@ -1321,6 +1471,39 @@
                 
                 // Renderizado inicial coordinado de la visualización cronológica
                 renderVis4();
+            }
+        });
+
+        // =========================================================
+        // PARSEO E INYECCIÓN DE DATOS PARA ESPECIALIZACIÓN EDITORIAL (VIS5)
+        // =========================================================
+        Papa.parse('Base_Ecosistemas_Ultra_Resumida.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawDataV5 = results.data;
+                
+                let selectPais = document.getElementById('filtroPaisVis5');
+                let selectAno = document.getElementById('filtroAnoVis5');
+                let selectDewey = document.getElementById('filtroDeweyVis5');
+                
+                // Mapeo unificado y ordenamiento dimensional libre de duplicados
+                let embeddingPaises = [...new Set(rawDataV5.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'SIN DATO').sort();
+                let embeddingAnos = [...new Set(rawDataV5.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO' && a >= '2010' && a <= '2025').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV5.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+
+                embeddingPaises.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p; selectPais.appendChild(opt); });
+                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+
+                // Asignación de escuchadores de cambio para filtros concurrentes
+                selectPais.addEventListener('change', renderVis5);
+                selectAno.addEventListener('change', renderVis5);
+                selectDewey.addEventListener('change', renderVis5);
+                
+                // Renderizado inicial coordinado
+                renderVis5(); 
             }
         });
         
