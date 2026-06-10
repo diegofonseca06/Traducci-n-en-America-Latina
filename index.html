@@ -140,7 +140,6 @@
         </div>
     </section>
 
-
     <section id="seccionVis11" class="visualization-section reveal">
         <div class="container">
             <div class="row align-items-center">
@@ -148,11 +147,11 @@
                 <div class="col-lg-5 delay-text">
                     <h2 class="chart-title">Balance de la Edición: Producción Local vs. Traducción</h2>
                     <p class="chart-description">
-                        Este análisis revela el equilibrio entre las obras originales de la región y aquellas que se incorporan mediante traducción. El gráfico interactivo permite explorar este comportamiento dinámico a lo largo de las distintas disciplinas del conocimiento y flujos históricos.
+                        Este análisis revela el equilibrio estructural entre las voces propias de la región y las obras que se incorporan al mercado mediante los flujos de traducción. El gráfico interactivo permite observar el comportamiento dinámico de este balance en las distintas áreas del conocimiento y corrientes temporales.
                         <br><br>
-                        Cada barra representa el <strong>100% de la producción editorial</strong> registrada para el país bajo los filtros seleccionados. La sección superior muestra la proporción de obras traducidas, mientras que la base representa la edición en su lengua nativa.
+                        Cada barra representa el <strong>100% de la producción editorial agregada</strong> de un país para los filtros seleccionados. La sección superior muestra la proporción relativa de obras traducidas, mientras que la base representa la edición no traducida (publicada en su lengua nativa).
                         <br><br>
-                        <em>Interacción:</em> Utilice los selectores dinámicos para aislar períodos temporales o categorías temáticas de la Clasificación Dewey. <strong>Posicione el cursor sobre cada segmento</strong> para conocer el volumen neto de publicaciones y descubrir el <strong>Top 5 de empresas editoriales</strong> que lideran el segmento.
+                        <em>Interacción:</em> Utilice los selectores dinámicos para segmentar los flujos por periodos específicos o por áreas temáticas de la Clasificación Dewey. <strong>Posicione el cursor sobre cada segmento de las barras</strong> para conocer el volumen neto de publicaciones y descubrir el <strong>Top 5 de empresas editoriales</strong> que lideran tanto la edición nacional como la importación de obras.
                     </p>
                     
                     <div class="filter-container">
@@ -163,7 +162,7 @@
                     </div>
 
                     <div class="filter-container">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Filtrar por Clasificación Temática (Dewey):</label>
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Filtrar por Categoría (Dewey Principal):</label>
                         <select id="filtroDeweyVis11" class="custom-select">
                             <option value="TODOS">Todas las categorías temáticas</option>
                         </select>
@@ -179,6 +178,7 @@
     </section>
 
 
+    
     <section id="seccionVis10" class="visualization-section bg-alternate reveal">
         <div class="container">
             <div class="row align-items-center flex-row-reverse">
@@ -344,7 +344,7 @@
         const axisTextStyle = { fontFamily: 'Lora', color: '#17142B', fontStyle: 'italic' };
 
         // =========================================================
-        // MOTOR DE RENDIMIENTO GRÁFICO (ECHARTS)
+        // LÓGICA DE VISUALIZACIÓN 11 (Barras 100% - Producción vs Traducción con Filtro Dewey)
         // =========================================================
         var chart11 = echarts.init(document.getElementById('vis11'));
         var rawDataV11 = [];
@@ -355,26 +355,21 @@
             
             let data = rawDataV11;
             
-            // Filtros concurrentes en el cliente
+            // Aplicar filtros concurrentes en el cliente en cascada
             if (yearFilter !== 'TODOS') data = data.filter(d => d['ANO'] === yearFilter);
             if (deweyFilter !== 'TODOS') data = data.filter(d => d['DEWEY PRINCIPAL'] === deweyFilter);
 
+            // 1. Obtener lista de entidades geográficas válidas sin duplicados
             let paisesSet = [...new Set(data.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'SIN DATO');
+            
+            // 2. Calcular agregaciones porcentuales de balance
             let countryStats = [];
 
             paisesSet.forEach(pais => {
                 let dataPais = data.filter(d => d['PAIS'] === pais);
                 
-                let totalTrad = dataPais.filter(d => {
-                    let t = String(d['TRADUCCIÓN']).toUpperCase().trim();
-                    return t === 'TRADUCIDO' || t === 'SÍ' || t === 'SI' || t === '1';
-                }).reduce((s, r) => s + parseInt(r['CANTIDAD'] || 0), 0);
-
-                let totalNoTrad = dataPais.filter(d => {
-                    let t = String(d['TRADUCCIÓN']).toUpperCase().trim();
-                    return !(t === 'TRADUCIDO' || t === 'SÍ' || t === 'SI' || t === '1') && t !== 'SIN DATO';
-                }).reduce((s, r) => s + parseInt(r['CANTIDAD'] || 0), 0);
-
+                let totalTrad = dataPais.filter(d => d['ESTADO_TRADUCCION'] === 'TRADUCIDO').reduce((s, r) => s + parseInt(r['CANTIDAD'] || 0), 0);
+                let totalNoTrad = dataPais.filter(d => d['ESTADO_TRADUCCION'] === 'NO TRADUCIDO').reduce((s, r) => s + parseInt(r['CANTIDAD'] || 0), 0);
                 let totalGral = totalTrad + totalNoTrad;
 
                 if (totalGral > 0) {
@@ -391,8 +386,10 @@
                 }
             });
 
+            // 3. ORDENAMIENTO DINÁMICO ESTABLE: De menor a mayor proporción de traducciones
             countryStats.sort((a, b) => a.pctTrad - b.pctTrad);
 
+            // 4. Construcción de series de datos para inyección en ECharts
             let finalPaises = [];
             let serieTraducido = [];
             let serieNoTraducido = [];
@@ -423,48 +420,45 @@
                         let realVal = params.data.realValue;
                         let pct = params.data.value;
                         
-                        let isTrad = (estado === 'TRADUCIDO');
-                        let subData = data.filter(d => {
-                            let t = String(d['TRADUCCIÓN']).toUpperCase().trim();
-                            let rowIsTrad = (t === 'TRADUCIDO' || t === 'SÍ' || t === 'SI' || t === '1');
-                            return d['PAIS'] === pais && (isTrad ? rowIsTrad : (!rowIsTrad && t !== 'SIN DATO'));
-                        });
-
+                        // Extraer sellos competitivos del segmento exacto activo
+                        let subData = data.filter(d => d['PAIS'] === pais && d['ESTADO_TRADUCCION'] === estado);
+                        
                         let edits = {};
                         subData.forEach(d => {
                             let e = d['EDITORIAL'];
-                            if(e && e.trim() !== '' && e !== 'SIN DATO') {
+                            if (e && e.trim() !== '' && e !== 'SIN DATO') {
                                 edits[e] = (edits[e] || 0) + parseInt(d['CANTIDAD'] || 0);
                             }
                         });
                         
-                        // Excluimos la etiqueta genérica 'OTROS' para presentar solo actores nominales en el Top 5
+                        // Exclusión explícita de la etiqueta residual genérica 'OTROS'
                         let topEdits = Object.keys(edits)
                             .map(k => ({ n: k, v: edits[k] }))
-                            .filter(e => e.n !== 'OTROS') 
+                            .filter(e => e.n !== 'OTROS')
                             .sort((a, b) => b.v - a.v)
                             .slice(0, 5);
 
-                        let colorLabel = isTrad ? '#006DF7' : '#817BA6';
-                        let labelDisplay = isTrad ? 'TRADUCCIONES' : 'PRODUCCIÓN NACIONAL';
-                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:280px;">`;
+                        let colorLabel = estado === 'TRADUCIDO' ? '#006DF7' : '#817BA6';
+                        let labelDisplay = estado === 'TRADUCIDO' ? 'TRADUCCIONES' : 'PRODUCCIÓN NACIONAL';
+                        
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px;">`;
                         h += `<strong style="font-family:'Playfair Display', serif; font-size:1.2em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">${pais}</strong>`;
                         h += `<span style="color:${colorLabel}; font-weight:bold;">${labelDisplay}:</span> <b>${realVal.toLocaleString()}</b> obras (${pct}%)<br><br>`;
                         
                         if (topEdits.length > 0) {
-                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Top 5 Actores Editoriales:</span><br/>`;
+                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Top 5 Sellos Editoriales:</span><br/>`;
                             topEdits.forEach((e, i) => {
                                 h += `<span style="display:block; margin-top:4px; white-space: normal; line-height:1.3;"><b>${i+1}.</b> ${e.n} <b>(${e.v.toLocaleString()})</b></span>`;
                             });
                         } else {
-                            h += `<span style="color:#817BA6; font-style:italic; font-size:11px;">No se registran datos editoriales detallados.</span>`;
+                            h += `<span style="color:#817BA6; font-style:italic; font-size:11px;">No se especifican detalles corporativos en esta selección.</span>`;
                         }
                         h += `</div>`;
                         return h;
                     }
                 },
                 legend: { data: ['Traducciones', 'Producción Nacional'], bottom: 0, textStyle: { fontFamily: 'Lora' } },
-                grid: { left: '3%', right: '4%', bottom: '18%', top: '5%', containLabel: true },
+                grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
                 xAxis: { 
                     type: 'category', 
                     data: finalPaises,
@@ -474,7 +468,7 @@
                     type: 'value', 
                     max: 100,
                     name: 'Porcentaje de la Producción (%)', 
-                    nameLocation: 'middle', nameGap: 45, nameTextStyle: axisTextStyle
+                    nameLocation: 'middle', nameGap: 40, nameTextStyle: axisTextStyle
                 },
                 series: [
                     {
@@ -498,7 +492,6 @@
 
             chart11.setOption(option11, true);
         }
-
 
         // =========================================================
         // LÓGICA DE VISUALIZACIÓN 10 (Sankey con Filtro Cruzado de Dewey)
@@ -969,9 +962,9 @@
         
 
         // =========================================================
-        // CARGA DIRECTA DE MATRIZ ULTRA RESUMIDA
+        // PARSEO E INYECCIÓN DE DATOS PARA BALANCE DE EDICIÓN (VIS11)
         // =========================================================
-        Papa.parse('Base_ISBN_Ultra_Resumida.csv', {
+        Papa.parse('Base_Balance_Ultra_Resumida.csv', {
             download: true, 
             header: true,
             skipEmptyLines: true,
@@ -979,22 +972,20 @@
                 rawDataV11 = results.data;
                 
                 let selectAno = document.getElementById('filtroAnoVis11');
-                let embeddingAnos = [...new Set(rawDataV11.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort().reverse();
-                embeddingAnos.forEach(a => {
-                    let opt = document.createElement('option');
-                    opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt);
-                });
-
                 let selectDewey = document.getElementById('filtroDeweyVis11');
-                let embeddingDeweys = [...new Set(rawDataV11.map(d => d['DEWEY PRINCIPAL']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort();
-                embeddingDeweys.forEach(cat => {
-                    let opt = document.createElement('option');
-                    opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt);
-                });
-
+                
+                // Mapeo unificado y ordenado de dimensiones de filtrado
+                let embeddingAnos = [...new Set(rawDataV11.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV11.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                
+                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                
+                // Vinculación de manejadores reactivos cruzados
                 selectAno.addEventListener('change', renderVis11);
                 selectDewey.addEventListener('change', renderVis11);
                 
+                // Inicialización primaria del gráfico
                 renderVis11();
             }
         });
