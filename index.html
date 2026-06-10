@@ -415,7 +415,67 @@
             </div>
         </div>
     </section>
-    
+
+    <section id="seccionVis12" class="visualization-section reveal">
+        <div class="container">
+            <div class="row align-items-center">
+                
+                <div class="col-12 delay-text mb-4 text-center">
+                    <h2 class="chart-title">La Pirámide Editorial: Concentración y Diversidad Lingüística</h2>
+                    <p class="chart-description text-start" style="max-width: 950px; margin: 0 auto;">
+                        Este análisis estructural divide el universo de empresas editoriales en 10 grupos de igual tamaño (deciles comerciales), organizados en un ranking descendente desde las corporaciones con los catálogos de traducción más masivos hasta los sellos artesanales o de nicho.
+                        <br><br>
+                        El segmento denominado <strong>'Top 10%'</strong> agrupa a los grandes motores industriales del continente, mientras que los escalones sucesivos desvelan la composición de la "larga cola" del mercado. El modelo coordina de manera interactiva dos dimensiones analíticas clave:
+                        <br><br>
+                        1. <strong>La Composición (Barras Apiladas al 100%):</strong> Muestra qué proporción de la producción interna de ese decil corresponde a cada idioma de origen mapeado. 
+                        2. <strong>La Productividad (Curva de Control):</strong> Indica cuántos libros traduce en promedio un único sello perteneciente a ese segmento competitivo.
+                        <br><br>
+                        <em>Interacción:</em> Use los interruptores superiores para aislar o superponer la vista de diversidad idiomática (%) o la curva de volumen promedio por actor. <strong>Pase el cursor sobre las barras</strong> para desplegar la productividad media, la desviación estándar (la brecha operativa interna del decil) y el desglose lingüístico ordenado.
+                    </p>
+                </div>
+
+                <div class="col-12 mb-4 d-flex flex-wrap justify-content-center gap-4 align-items-end">
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Ámbito Geográfico:</label>
+                        <select id="filtroPaisVis12" class="custom-select" style="font-size: 1.1rem; min-width: 220px;">
+                            <option value="TODOS">Todos los países</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Periodo Temporal:</label>
+                        <select id="filtroAnoVis12" class="custom-select" style="font-size: 1.1rem; min-width: 150px;">
+                            <option value="TODOS">Todos los años</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría Temática (Dewey):</label>
+                        <select id="filtroDeweyVis12" class="custom-select" style="font-size: 1.1rem; min-width: 220px;">
+                            <option value="TODOS">Todas las categorías temáticas</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-box pb-2" style="border-left: 2px solid #eee; padding-left: 20px;">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-family: sans-serif;">Capas de Datos:</label>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="toggleBarrasV12" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="toggleBarrasV12" style="color:#006DF7;">Barras (% Diversidad)</label>
+                        </div>
+                        <div class="form-check form-switch form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="toggleCurvaV12" checked style="cursor:pointer;">
+                            <label class="form-check-label fw-bold" for="toggleCurvaV12" style="color:#E74C3C;">Curva (Promedio)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div id="vis12" class="chart-container" style="height: 650px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
 
     <script>
         // Lógica de Scroll Efecto Revelar
@@ -1320,6 +1380,158 @@
             };
             chart5.setOption(option5, true);
         }
+
+
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles con Filtros Cruzados Concurrentes)
+        // =========================================================
+        var chart12 = echarts.init(document.getElementById('vis12'));
+        var rawDataV12 = [];
+        
+        // Mapa cromático de alta consistencia lingüística de acuerdo con la paleta maestra
+        const colorMapIdiomas = {
+            'INGLÉS': '#1F0F80', 'FRANCÉS': '#006DF7', 'ALEMÁN': '#817BA6', 
+            'ITALIANO': '#A09CBE', 'PORTUGUÉS': '#17142B', 'JAPONÉS': '#E74C3C',
+            'CHINO': '#27AE60', 'RUSO': '#F1C40F', 'OTROS': '#D5D8DC'
+        };
+        const defaultPalette = ['#3498DB', '#E67E22', '#9B59B6', '#1ABC9C', '#D35400', '#2980B9', '#16A085'];
+
+        function getIdiomaColor(idioma, index) {
+            let key = String(idioma).toUpperCase().trim();
+            if (colorMapIdiomas[key]) return colorMapIdiomas[key];
+            return defaultPalette[index % defaultPalette.length];
+        }
+
+        function renderVis12() {
+            let paisVal = document.getElementById('filtroPaisVis12').value;
+            let anoVal = document.getElementById('filtroAnoVis12').value;
+            let deweyVal = document.getElementById('filtroDeweyVis12').value;
+            let showBars = document.getElementById('toggleBarrasV12').checked;
+            let showLine = document.getElementById('toggleCurvaV12').checked;
+
+            // Filtrado tridimensional en cascada en el cliente
+            let filtered = rawDataV12.filter(d => d['PAIS'] === paisVal && d['ANO'] === anoVal && d['DEWEY PRINCIPAL'] === deweyVal);
+            
+            if (filtered.length === 0) {
+                chart12.clear();
+                return;
+            }
+
+            // Extracción lineal ordenada de etiquetas de deciles estructurales
+            let decilesLabels = [...new Set(filtered.map(d => d['DECILE_LABEL']))].sort((a,b) => {
+                let objA = filtered.find(x => x['DECILE_LABEL'] === a);
+                let objB = filtered.find(x => x['DECILE_LABEL'] === b);
+                let orderA = objA ? parseInt(objA['DECILE_ORDER'] || 0) : 0;
+                let orderB = objB ? parseInt(objB['DECILE_ORDER'] || 0) : 0;
+                return orderA - orderB;
+            });
+
+            let idiomasPresentes = [...new Set(filtered.map(d => d['IDIOMA_ORIGEN']))].filter(i => i && i !== 'SIN DATO');
+            let seriesData = [];
+
+            // Construcción de series para las Barras Apiladas al 100%
+            if (showBars) {
+                idiomasPresentes.forEach((idm, idx) => {
+                    let dataSerie = decilesLabels.map(label => {
+                        let row = filtered.find(d => d['DECILE_LABEL'] === label && d['IDIOMA_ORIGEN'] === idm);
+                        if (!row) return 0;
+                        
+                        let totalDecil = filtered.filter(d => d['DECILE_LABEL'] === label)
+                                                 .reduce((s, r) => s + (parseInt(r['CANTIDAD_OBRAS_IDIOMA']) || 0), 0);
+                                                 
+                        let val = parseInt(row['CANTIDAD_OBRAS_IDIOMA'] || 0);
+                        return totalDecil > 0 ? parseFloat(((val / totalDecil) * 100).toFixed(2)) : 0;
+                    });
+
+                    seriesData.push({
+                        name: idm, type: 'bar', stack: 'total',
+                        data: dataSerie,
+                        itemStyle: { color: getIdiomaColor(idm, idx) },
+                        emphasis: { focus: 'series' }
+                    });
+                });
+            }
+
+            // Construcción de la serie para la Curva de Productividad Media
+            if (showLine) {
+                let lineData = decilesLabels.map(label => {
+                    let row = filtered.find(d => d['DECILE_LABEL'] === label);
+                    return row ? parseFloat(row['PROMEDIO_REGISTROS']) : 0;
+                });
+
+                seriesData.push({
+                    name: 'Promedio de Obras',
+                    type: 'line', yAxisIndex: 1,
+                    data: lineData,
+                    symbolSize: 10,
+                    itemStyle: { color: '#E74C3C', borderWidth: 2 },
+                    lineStyle: { width: 4, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.25)' },
+                    z: 10
+                });
+            }
+
+            var option12 = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    formatter: function(params) {
+                        let label = params[0].axisValue;
+                        let rows = filtered.filter(d => d['DECILE_LABEL'] === label);
+                        if (rows.length === 0) return '';
+                        
+                        let avg = parseFloat(rows[0]['PROMEDIO_REGISTROS']).toLocaleString();
+                        let std = parseFloat(rows[0]['DESVIACION_ESTANDAR']).toLocaleString();
+                        let eds = parseInt(rows[0]['CANTIDAD_EDITORIALES']).toLocaleString();
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px;">`;
+                        h += `<strong style="font-family:'Playfair Display', serif; font-size:1.1em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">Segmento: ${label}</strong>`;
+                        h += `Productividad Media: <b>${avg} ± ${std}</b> obras/ed.<br>`;
+                        h += `Densidad de Población: <b>${eds}</b> sellos actores<br><br>`;
+                        
+                        if (showBars) {
+                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Diversidad Lingüística Interna:</span><br/>`;
+                            
+                            let barParams = params.filter(p => p.seriesType === 'bar' && parseFloat(p.value) > 0);
+                            barParams.sort((a,b) => parseFloat(b.value) - parseFloat(a.value));
+                            
+                            barParams.forEach(p => {
+                                h += `<span style="display:flex; justify-content:space-between; margin-top:4px;">
+                                        <span><span style="display:inline-block;margin-right:6px;border-radius:10px;width:9px;height:9px;background-color:${p.color};"></span>${p.seriesName}</span>
+                                        <strong style="margin-left:20px;">${p.value}%</strong>
+                                      </span>`;
+                            });
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                legend: { type: 'scroll', bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 10 } },
+                grid: { left: '4%', right: '5%', bottom: '18%', top: '10%', containLabel: true },
+                xAxis: {
+                    type: 'category', data: decilesLabels,
+                    axisLabel: { interval: 0, rotate: 30, fontFamily: 'Inter', fontSize: 10, fontWeight: '600' }
+                },
+                yAxis: [
+                    { 
+                        type: 'value', max: 100, show: showBars,
+                        name: 'Distribución Porcentual (%)', nameTextStyle: axisTextStyle,
+                        axisLabel: { formatter: '{value}%' },
+                        splitLine: { lineStyle: { color: '#f5f5f5' } }
+                    },
+                    { 
+                        type: 'value', show: showLine,
+                        name: 'Volumen Promedio de Obras', nameTextStyle: axisTextStyle,
+                        splitLine: { show: false }
+                    }
+                ],
+                series: seriesData
+            };
+
+            chart12.setOption(option12, true);
+        }
+
+        document.getElementById('toggleBarrasV12').addEventListener('change', renderVis12);
+        document.getElementById('toggleCurvaV12').addEventListener('change', renderVis12);
         
 
         // =========================================================
@@ -1504,6 +1716,39 @@
                 
                 // Renderizado inicial coordinado
                 renderVis5(); 
+            }
+        });
+
+        // =========================================================
+        // PARSEO E INYECCIÓN DE DATOS PARA LA PIRÁMIDE EDITORIAL (VIS12)
+        // =========================================================
+        Papa.parse('Base_Piramide_Ultra_Resumida.csv', {
+            download: true, 
+            header: true, 
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawDataV12 = results.data;
+                
+                let selPais = document.getElementById('filtroPaisVis12');
+                let selAno = document.getElementById('filtroAnoVis12');
+                let selDewey = document.getElementById('filtroDeweyVis12');
+                
+                // Mapeo unificado de dimensiones ordenadas sin duplicación
+                let paises = [...new Set(rawDataV12.map(d => d['PAIS']))].filter(p => p && p !== 'TODOS').sort();
+                let anos = [...new Set(rawDataV12.map(d => d['ANO']))].filter(a => a && a !== 'TODOS').sort().reverse();
+                let deweys = [...new Set(rawDataV12.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat !== 'TODOS').sort();
+                
+                paises.forEach(p => { let o = document.createElement('option'); o.value = p; o.innerHTML = p; selPais.appendChild(o); });
+                anos.forEach(a => { let o = document.createElement('option'); o.value = a; o.innerHTML = a; selAno.appendChild(o); });
+                deweys.forEach(cat => { let o = document.createElement('option'); o.value = cat; o.innerHTML = cat; selDewey.appendChild(o); });
+                
+                // Registro reactivo de escuchadores de eventos cruzados
+                selPais.addEventListener('change', renderVis12);
+                selAno.addEventListener('change', renderVis12);
+                selDewey.addEventListener('change', renderVis12);
+                
+                // Renderizado inicial coordinado
+                renderVis12();
             }
         });
         
