@@ -477,6 +477,60 @@
         </div>
     </section>
 
+
+    <section id="seccionVis7" class="visualization-section bg-alternate reveal">
+        <div class="container">
+            <div class="row align-items-center flex-row-reverse">
+                
+                <div class="col-lg-5 delay-text">
+                    <h2 class="chart-title">El Puente Bilingüe: Flujos entre el Español y el Portugués</h2>
+                    <p class="chart-description">
+                        América Latina respira y produce en dos lenguas mayoritarias. Este <strong>Diagrama de Sankey de tres capas</strong> mapea las corrientes de traducción directa entre las orillas hispanohablante y lusófona, revelando la intensidad del intercambio cultural y sus dinámicas corporativas.
+                        <br><br>
+                        Siga el caudal de las bandas de izquierda a derecha: el trayecto inicia en la <strong>Lengua de Origen</strong> (primera capa), transita hacia el <strong>País de Publicación</strong> que coordinó la edición física (segunda capa), y desemboca en la <strong>Lengua de Destino</strong> final (tercera capa). El grosor del caudal representa el volumen neto de libros traducidos.
+                        <br><br>
+                        <em>Interacción y Mejora de Ruta:</em> Utilice los filtros para segmentar por año, área temática (Dewey) o el perfil institucional del editor. <strong>Posicione el cursor sobre cualquier nodo o banda de flujo</strong> para resaltar de manera continua la trayectoria completa y desplegar el <strong>Top 5 de sellos editoriales</strong> que impulsaron dicho intercambio.
+                    </p>
+                    
+                    <div class="filter-container">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Periodo:</label>
+                                <select id="filtroAnoVis7" class="custom-select">
+                                    <option value="TODOS">Todos los años históricos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría (Dewey):</label>
+                                <select id="filtroDeweyVis7" class="custom-select">
+                                    <option value="TODOS">Todas las categorías</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Tipo de Agente:</label>
+                                <select id="filtroAgenteVis7" class="custom-select">
+                                    <option value="TODOS">Todos los agentes (Sin filtrar)</option>
+                                    <option value="EDITORIAL COMERCIAL">Editorial Comercial</option>
+                                    <option value="EDITORIAL UNIVERSITARIA">Editorial Universitaria</option>
+                                    <option value="AMBAS">Ambas (Comercial + Universitaria)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div id="vis7" class="chart-container" style="height: 650px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+
+
+    
+
     <script>
         // Lógica de Scroll Efecto Revelar
         function reveal() {
@@ -1573,6 +1627,139 @@
             chart12.setOption(option12, true);
         }
 
+
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 7 (Sankey Bilingüe de 3 Capas Cruzadas)
+        // =========================================================
+        var chart7 = echarts.init(document.getElementById('vis7'));
+        var rawDataV7 = [];
+
+        function renderVis7() {
+            let yearFilter = document.getElementById('filtroAnoVis7').value;
+            let deweyFilter = document.getElementById('filtroDeweyVis7').value;
+            let agentFilter = document.getElementById('filtroAgenteVis7').value;
+
+            // Filtrado paramétrico exacto sobre el cubo expandido pre-calculado
+            let data = rawDataV7.filter(d => d['ANO'] === yearFilter && d['DEWEY PRINCIPAL'] === deweyFilter && d['TIPO_AGENTE'] === agentFilter);
+
+            let linksMap = {};
+
+            function addLink(source, target, value, editorial) {
+                let key = source + '|' + target;
+                if (!linksMap[key]) {
+                    linksMap[key] = { value: 0, edits: {} };
+                }
+                linksMap[key].value += value;
+                if (editorial && editorial !== 'SIN DATO') {
+                    linksMap[key].edits[editorial] = (linksMap[key].edits[editorial] || 0) + value;
+                }
+            }
+
+            // Mapeo topológico trilineal indexado
+            data.forEach(d => {
+                let val = parseInt(d['CANTIDAD'] || 0);
+                let pais = d['PAIS'];
+                let ed = d['EDITORIAL'];
+                let orig = d['IDIOMA_ORIGEN_ST'] + ' (Origen)';
+                let dest = d['IDIOMA_DESTINO_ST'] + ' (Destino)';
+                
+                if (val > 0 && pais && pais !== 'SIN DATO') {
+                    // Capa 1 a Capa 2
+                    addLink(orig, pais, val, ed);
+                    // Capa 2 a Capa 3
+                    addLink(pais, dest, val, ed);
+                }
+            });
+
+            let nodesSet = new Set();
+            let linksList = [];
+
+            Object.keys(linksMap).forEach(k => {
+                let parts = k.split('|');
+                let src = parts[0];
+                let tgt = parts[1];
+                let info = linksMap[k];
+
+                nodesSet.add(src);
+                nodesSet.add(tgt);
+
+                linksList.push({
+                    source: src,
+                    target: tgt,
+                    value: info.value,
+                    edits: info.edits
+                });
+            });
+
+            let nodesList = Array.from(nodesSet).map(n => ({ name: n }));
+
+            var option7 = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', 
+                    borderColor: '#1F0F80', 
+                    textStyle: { color: '#17142B' },
+                    formatter: function (params) {
+                        if (params.dataType === 'node') {
+                            let nodeName = params.name.replace(' (Origen)', '').replace(' (Destino)', '');
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#1F0F80; font-size:1.1em;">Nodo: ${nodeName}</strong><br/>Volumen de Paso Total: <b>${params.value.toLocaleString()}</b> obras</div>`;
+                        }
+                        
+                        let src = params.data.source.replace(' (Origen)', '');
+                        let tgt = params.data.target.replace(' (Destino)', '');
+                        let val = params.data.value;
+                        let edits = params.data.edits;
+
+                        // Extraer Top 5 de sellos editoriales excluyendo 'OTROS'
+                        let topEdits = Object.keys(edits)
+                            .map(k => ({ n: k, c: edits[k] }))
+                            .filter(e => e.n !== 'OTROS')
+                            .sort((a, b) => b.c - a.c)
+                            .slice(0, 5);
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:260px;">`;
+                        h += `<strong style="font-family: 'Playfair Display', serif; font-size: 1.1em; color: #1F0F80; border-bottom: 1px solid #ccc; display: block; margin-bottom: 8px; padding-bottom: 5px;">Tramo: ${src} ➔ ${tgt}</strong>`;
+                        h += `Volumen del Flujo: <b>${val.toLocaleString()}</b> publicaciones<br><br>`;
+                        
+                        if (topEdits.length > 0) {
+                            h += `<span style="color:#006DF7;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;">Top 5 Agentes en este Flujo:</span><br/>`;
+                            topEdits.forEach((e, i) => {
+                                h += `<span style="display:block;margin-top:4px;white-space: normal;line-height:1.2;"><b>${i+1}.</b> ${e.n} <b>(${e.c.toLocaleString()})</b></span>`;
+                            });
+                        } else {
+                            h += `<span style="font-size: 0.9em; font-style: italic; color: #817BA6;">Detalle editorial corporativo no especificado</span>`;
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                series: [{
+                    type: 'sankey',
+                    layout: 'none',
+                    emphasis: { 
+                        focus: 'adjacency',
+                        itemStyle: { borderWidth: 2, borderColor: '#1F0F80' },
+                        lineStyle: { opacity: 0.85 }
+                    },
+                    nodeAlign: 'justify',
+                    data: nodesList,
+                    links: linksList,
+                    lineStyle: { color: 'source', curveness: 0.5, opacity: 0.3 },
+                    itemStyle: { borderWidth: 1, borderColor: '#fff' },
+                    label: { 
+                        fontFamily: 'Inter', fontSize: 10, color: '#17142B', fontWeight: '600',
+                        formatter: p => p.name.replace(' (Origen)', '').replace(' (Destino)', '') 
+                    }
+                }],
+                color: ['#1F0F80', '#006DF7', '#817BA6', '#17142B', '#A09CBE', '#3498DB', '#95A5A6', '#E74C3C', '#2C3E50']
+            };
+
+            if (linksList.length > 0) chart7.setOption(option7, true);
+            else chart7.clear();
+        }
+
+        
+
         // =========================================================
         // PARSEO E INYECCIÓN DE DATOS PARA BALANCE DE EDICIÓN (VIS11)
         // =========================================================
@@ -1787,7 +1974,37 @@
                 renderVis12();
             }
         });
-        
+
+
+        // =========================================================
+        // PARSEO E INYECCIÓN DE DATOS PARA EL PUENTE BILINGÜE (VIS7)
+        // =========================================================
+        Papa.parse('Base_Puente_Bilingue_Ultra_Resumida.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawDataV7 = results.data;
+                
+                let selectAno = document.getElementById('filtroAnoVis7');
+                let selectDewey = document.getElementById('filtroDeweyVis7');
+                
+                // Mapeo unificado y ordenamiento de dimensiones sin duplicados
+                let embeddingAnos = [...new Set(rawDataV7.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV7.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
+                
+                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                
+                // Registro simultáneo de manejadores de eventos cruzados
+                selectAno.addEventListener('change', renderVis7);
+                selectDewey.addEventListener('change', renderVis7);
+                document.getElementById('filtroAgenteVis7').addEventListener('change', renderVis7);
+                
+                // Despliegue gráfico originario
+                renderVis7();
+            }
+        });
 
         window.addEventListener('resize', function() { 
             if(typeof chart11 !== 'undefined') chart11.resize(); 
