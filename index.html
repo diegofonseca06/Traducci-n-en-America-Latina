@@ -423,35 +423,35 @@
                 <div class="col-12 delay-text mb-4 text-center">
                     <h2 class="chart-title">La Pirámide Editorial: Concentración y Diversidad Lingüística</h2>
                     <p class="chart-description text-start" style="max-width: 950px; margin: 0 auto;">
-                        Este análisis estructural divide el universo de empresas editoriales en 10 grupos de igual tamaño (deciles comerciales), organizados en un ranking descendente desde las corporaciones con los catálogos de traducción más masivos hasta los sellos artesanales o de nicho.
+                        Este análisis avanzado divide el universo de empresas editoriales en 10 grupos de igual tamaño (deciles competitivos), ordenados jerárquicamente desde aquellas corporaciones que poseen los catálogos de traducción más masivos hasta los sellos más selectos o emergentes.
                         <br><br>
-                        El segmento denominado <strong>'Top 10%'</strong> agrupa a los grandes motores industriales del continente, mientras que los escalones sucesivos desvelan la composición de la "larga cola" del mercado. El modelo coordina de manera interactiva dos dimensiones analíticas clave:
+                        El segmento superior denominado <strong>'Top 10% Líderes'</strong> unifica a los grandes motores industriales del continente, mientras que los eslabones descendientes mapean la "larga cola" del mercado bibliográfico. El modelo coordina dos dimensiones críticas en tiempo real:
                         <br><br>
-                        1. <strong>La Composición (Barras Apiladas al 100%):</strong> Muestra qué proporción de la producción interna de ese decil corresponde a cada idioma de origen mapeado. 
-                        2. <strong>La Productividad (Curva de Control):</strong> Indica cuántos libros traduce en promedio un único sello perteneciente a ese segmento competitivo.
+                        1. <strong>La Composición Estructural (Barras Ordenadas):</strong> Representa qué proporción de la producción de dicho decil corresponde a cada idioma de origen, organizada internamente de mayor a menor espesor.
+                        2. <strong>La Productividad Escalar (Curva Coordenada):</strong> Indica cuántos libros traduce, en promedio exacto, una sola casa editorial perteneciente a dicho segmento competitivo.
                         <br><br>
-                        <em>Interacción:</em> Use los interruptores superiores para aislar o superponer la vista de diversidad idiomática (%) o la curva de volumen promedio por actor. <strong>Pase el cursor sobre las barras</strong> para desplegar la productividad media, la desviación estándar (la brecha operativa interna del decil) y el desglose lingüístico ordenado.
+                        <em>Interacción:</em> Use los interruptores interactivos para aislar o superponer las capas de diversidad relativa (%) o la curva de volumen promedio. <strong>Pase el cursor sobre las barras apiladas</strong> para desplegar un panel analítico confinado que expone el promedio neto, la desviación estándar (brecha de dispersión interna entre sellos) y el desglose lingüístico jerarquizado.
                     </p>
                 </div>
 
                 <div class="col-12 mb-4 d-flex flex-wrap justify-content-center gap-4 align-items-end">
                     <div class="filter-box">
                         <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Ámbito Geográfico:</label>
-                        <select id="filtroPaisVis12" class="custom-select" style="font-size: 1.1rem; min-width: 220px;">
-                            <option value="TODOS">Todos los países</option>
+                        <select id="filtroPaisVis12" class="custom-select" style="min-width: 220px;">
+                            <option value="TODOS">Todos los países (Continental)</option>
                         </select>
                     </div>
 
                     <div class="filter-box">
                         <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Periodo Temporal:</label>
-                        <select id="filtroAnoVis12" class="custom-select" style="font-size: 1.1rem; min-width: 150px;">
-                            <option value="TODOS">Todos los años</option>
+                        <select id="filtroAnoVis12" class="custom-select" style="min-width: 150px;">
+                            <option value="TODOS">Todos los años históricos</option>
                         </select>
                     </div>
 
                     <div class="filter-box">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría Temática (Dewey):</label>
-                        <select id="filtroDeweyVis12" class="custom-select" style="font-size: 1.1rem; min-width: 220px;">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Clasificación Temática (Dewey):</label>
+                        <select id="filtroDeweyVis12" class="custom-select" style="min-width: 220px;">
                             <option value="TODOS">Todas las categorías temáticas</option>
                         </select>
                     </div>
@@ -1383,24 +1383,27 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles con Filtros Cruzados Concurrentes)
+        // LÓGICA DE VISUALIZACIÓN 12 (La Pirámide Editorial con Ordenamiento de Bloques)
         // =========================================================
         var chart12 = echarts.init(document.getElementById('vis12'));
         var rawDataV12 = [];
         
-        // Mapa cromático de alta consistencia lingüística de acuerdo con la paleta maestra
-        const colorMapIdiomas = {
-            'INGLÉS': '#1F0F80', 'FRANCÉS': '#006DF7', 'ALEMÁN': '#817BA6', 
-            'ITALIANO': '#A09CBE', 'PORTUGUÉS': '#17142B', 'JAPONÉS': '#E74C3C',
-            'CHINO': '#27AE60', 'RUSO': '#F1C40F', 'OTROS': '#D5D8DC'
+        // Mapa cromático extendido para estabilidad de identidades lingüísticas
+        const colorMapIdiomasV12 = {
+            'INGLÉS': '#1F0F80', 'INGLES': '#1F0F80',
+            'FRANCÉS': '#006DF7', 'FRANCES': '#006DF7',
+            'ALEMÁN': '#817BA6', 'ALEMAN': '#817BA6',
+            'ITALIANO': '#A09CBE', 'PORTUGUÉS': '#17142B', 'PORTUGUES': '#17142B',
+            'JAPONÉS': '#E74C3C', 'JAPONES': '#E74C3C',
+            'CHINO': '#27AE60', 'RUSO': '#F1C40F', 'SIN DATA': '#E5E7E9', 'OTROS': '#D5D8DC'
         };
-        const defaultPalette = ['#3498DB', '#E67E22', '#9B59B6', '#1ABC9C', '#D35400', '#2980B9', '#16A085'];
+        const paletteV12 = ['#3498DB', '#E67E22', '#9B59B6', '#1ABC9C', '#D35400', '#2980B9', '#16A085'];
 
-        function getIdiomaColor(idioma, index) {
+         MilfordIdiomaColorV12 = function(idioma, index) {
             let key = String(idioma).toUpperCase().trim();
-            if (colorMapIdiomas[key]) return colorMapIdiomas[key];
-            return defaultPalette[index % defaultPalette.length];
-        }
+            if (colorMapIdiomasV12[key]) return colorMapIdiomasV12[key];
+            return paletteV12[index % paletteV12.length];
+        };
 
         function renderVis12() {
             let paisVal = document.getElementById('filtroPaisVis12').value;
@@ -1409,7 +1412,7 @@
             let showBars = document.getElementById('toggleBarrasV12').checked;
             let showLine = document.getElementById('toggleCurvaV12').checked;
 
-            // Filtrado tridimensional en cascada en el cliente
+            // Filtro sincrónico multi-eje
             let filtered = rawDataV12.filter(d => d['PAIS'] === paisVal && d['ANO'] === anoVal && d['DEWEY PRINCIPAL'] === deweyVal);
             
             if (filtered.length === 0) {
@@ -1417,110 +1420,133 @@
                 return;
             }
 
-            // Extracción lineal ordenada de etiquetas de deciles estructurales
+            // Aislamiento de etiquetas únicas de deciles ordenadas estructuralmente
             let decilesLabels = [...new Set(filtered.map(d => d['DECILE_LABEL']))].sort((a,b) => {
                 let objA = filtered.find(x => x['DECILE_LABEL'] === a);
                 let objB = filtered.find(x => x['DECILE_LABEL'] === b);
-                let orderA = objA ? parseInt(objA['DECILE_ORDER'] || 0) : 0;
-                let orderB = objB ? parseInt(objB['DECILE_ORDER'] || 0) : 0;
-                return orderA - orderB;
+                return (parseInt(objA['DECILE_ORDER'] || 0)) - (parseInt(objB['DECILE_ORDER'] || 0));
             });
 
-            let idiomasPresentes = [...new Set(filtered.map(d => d['IDIOMA_ORIGEN']))].filter(i => i && i !== 'SIN DATO');
+            // ALGORITMO DE ORDENAMIENTO INDEPENDIENTE POR BARRA
+            // Calculamos la distribución e idiomas ordenados de mayor a menor para CADA decil
+            let maxLayers = 0;
+            let decilesDistributedData = decilesLabels.map(label => {
+                let rowsDecil = filtered.filter(d => d['DECILE_LABEL'] === label);
+                let totalObras = rowsDecil.reduce((s, r) => s + (parseInt(r['CANTIDAD_OBRAS_IDIOMA'] || 0)), 0);
+                
+                let langsMapped = rowsDecil.map((row, idx) => {
+                    let cant = listVal = paramObra = parseInt(row['CANTIDAD_OBRAS_IDIOMA'] || 0);
+                    let pct = totalObras > 0 ? ((cant / totalObras) * 100) : 0;
+                    return {
+                        idioma: row['IDIOMA_ORIGEN'],
+                        cantidad: cant,
+                        porcentaje: pct,
+                        color: MilfordIdiomaColorV12(row['IDIOMA_ORIGEN'], idx)
+                    };
+                }).filter(l => l.porcentaje > 0);
+
+                // Ordenación Descendente Estricta (El bloque más grueso abajo en la pila primaria)
+                langsMapped.sort((a, b) => b.porcentaje - a.porcentaje);
+                if (langsMapped.length > maxLayers) maxLayers = langsMapped.length;
+
+                return {
+                    label: label,
+                    languages: langsMapped,
+                    promedio: rowsDecil[0] ? parseFloat(rowsDecil[0]['PROMEDIO_REGISTROS'] || 0) : 0,
+                    desviacion: rowsDecil[0] ? parseFloat(rowsDecil[0]['DESVIACION_ESTANDAR'] || 0) : 0,
+                    poblacion: rowsDecil[0] ? parseInt(rowsDecil[0]['CANTIDAD_EDITORIALES'] || 0) : 0
+                };
+            });
+
             let seriesData = [];
 
-            // Construcción de series para las Barras Apiladas al 100%
+            // Inyección por capas posicionales genéricas para habilitar ordenamiento interno asincrónico
             if (showBars) {
-                idiomasPresentes.forEach((idm, idx) => {
-                    let dataSerie = decilesLabels.map(label => {
-                        let row = filtered.find(d => d['DECILE_LABEL'] === label && d['IDIOMA_ORIGEN'] === idm);
-                        if (!row) return 0;
-                        
-                        let totalDecil = filtered.filter(d => d['DECILE_LABEL'] === label)
-                                                 .reduce((s, r) => s + (parseInt(r['CANTIDAD_OBRAS_IDIOMA']) || 0), 0);
-                                                 
-                        let val = parseInt(row['CANTIDAD_OBRAS_IDIOMA'] || 0);
-                        return totalDecil > 0 ? parseFloat(((val / totalDecil) * 100).toFixed(2)) : 0;
+                for (let i = 0; i < maxLayers; i++) {
+                    let layerData = decilesDistributedData.map(decilObj => {
+                        let langObj = decilObj.languages[i];
+                        if (!langObj) return { value: 0, itemStyle: { opacity: 0 } };
+                        return {
+                            value: parseFloat(langObj.porcentaje.toFixed(2)),
+                            realValue: langObj.cantidad,
+                            idiomaName: langObj.idioma,
+                            itemStyle: { color: langObj.color }
+                        };
                     });
 
                     seriesData.push({
-                        name: idm, type: 'bar', stack: 'total',
-                        data: dataSerie,
-                        itemStyle: { color: getIdiomaColor(idm, idx) },
+                        type: 'bar',
+                        stack: 'total',
+                        silent: false,
+                        data: layerData,
                         emphasis: { focus: 'series' }
                     });
-                });
+                }
             }
 
-            // Construcción de la serie para la Curva de Productividad Media
+            // 3. Preparación e inyección de la Serie Absoluta de Control (Curva de Productividad)
             if (showLine) {
-                let lineData = decilesLabels.map(label => {
-                    let row = filtered.find(d => d['DECILE_LABEL'] === label);
-                    return row ? parseFloat(row['PROMEDIO_REGISTROS']) : 0;
-                });
+                let lineData = decilesDistributedData.map(d => d.promedio);
 
                 seriesData.push({
                     name: 'Promedio de Obras',
-                    type: 'line', yAxisIndex: 1,
+                    type: 'line', 
+                    yAxisIndex: 1,
                     data: lineData,
                     symbolSize: 10,
                     itemStyle: { color: '#E74C3C', borderWidth: 2 },
                     lineStyle: { width: 4, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.25)' },
-                    z: 10
+                    z: 15
                 });
             }
 
             var option12 = {
                 tooltip: {
                     trigger: 'axis',
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    confine: true, // SOLUCIÓN AL DESBORDAMIENTO: Encapsula el contenedor dentro del gráfico
+                    backgroundColor: 'rgba(255, 255, 255, 0.99)', 
+                    borderColor: '#1F0F80', 
+                    textStyle: { color: '#17142B' },
+                    axisPointer: { type: 'shadow' },
                     formatter: function(params) {
                         let label = params[0].axisValue;
-                        let rows = filtered.filter(d => d['DECILE_LABEL'] === label);
-                        if (rows.length === 0) return '';
+                        let decilObj = decilesDistributedData.find(d => d.label === label);
+                        if (!decilObj) return '';
                         
-                        let avg = parseFloat(rows[0]['PROMEDIO_REGISTROS']).toLocaleString();
-                        let std = parseFloat(rows[0]['DESVIACION_ESTANDAR']).toLocaleString();
-                        let eds = parseInt(rows[0]['CANTIDAD_EDITORIALES']).toLocaleString();
-
-                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px;">`;
-                        h += `<strong style="font-family:'Playfair Display', serif; font-size:1.1em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">Segmento: ${label}</strong>`;
-                        h += `Productividad Media: <b>${avg} ± ${std}</b> obras/ed.<br>`;
-                        h += `Densidad de Población: <b>${eds}</b> sellos actores<br><br>`;
+                        let h = `<div style="font-family:'Inter'; font-size:12px; max-width:320px; max-height:400px; overflow-y:auto; padding-right:5px;">`;
+                        h += `<strong style="font-family:'Playfair Display', serif; font-size:1.15em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">Segmento: ${label}</strong>`;
+                        h += `Productividad Media: <b>${decilObj.promedio.toLocaleString()} ± ${decilObj.desviacion.toLocaleString()}</b> obras/ed.<br>`;
+                        h += `Densidad de Población: <b>${decilObj.poblacion.toLocaleString()}</b> casas editoriales<br><br>`;
                         
-                        if (showBars) {
-                            h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">Diversidad Lingüística Interna:</span><br/>`;
-                            
-                            let barParams = params.filter(p => p.seriesType === 'bar' && parseFloat(p.value) > 0);
-                            barParams.sort((a,b) => parseFloat(b.value) - parseFloat(a.value));
-                            
-                            barParams.forEach(p => {
-                                h += `<span style="display:flex; justify-content:space-between; margin-top:4px;">
-                                        <span><span style="display:inline-block;margin-right:6px;border-radius:10px;width:9px;height:9px;background-color:${p.color};"></span>${p.seriesName}</span>
-                                        <strong style="margin-left:20px;">${p.value}%</strong>
-                                      </span>`;
-                            });
-                        }
+                        h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; letter-spacing:0.5px; display:block; margin-bottom:4px;">Composición Lingüística (Ordenada):</span>`;
+                        
+                        // Renderizar la lista unificada ordenada directamente desde el objeto estructurado en la barra
+                        decilObj.languages.forEach(l => {
+                            h += `<div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; font-size:11px;">
+                                    <span><span style="display:inline-block; margin-right:6px; border-radius:50%; width:8px; height:8px; background-color:${l.color};"></span>${l.idioma}</span>
+                                    <strong style="margin-left:20px; color:#17142B;">${l.porcentaje.toFixed(2)}% <span style="color:#817BA6; font-weight:normal; font-size:10px;">(${l.cantidad.toLocaleString()})</span></strong>
+                                  </div>`;
+                        });
                         h += `</div>`;
                         return h;
                     }
                 },
-                legend: { type: 'scroll', bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 10 } },
                 grid: { left: '4%', right: '5%', bottom: '18%', top: '10%', containLabel: true },
                 xAxis: {
-                    type: 'category', data: decilesLabels,
+                    type: 'category', 
+                    data: decilesLabels,
                     axisLabel: { interval: 0, rotate: 30, fontFamily: 'Inter', fontSize: 10, fontWeight: '600' }
                 },
                 yAxis: [
                     { 
                         type: 'value', max: 100, show: showBars,
-                        name: 'Distribución Porcentual (%)', nameTextStyle: axisTextStyle,
+                        name: 'Distribución Relativa (%)', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic' },
                         axisLabel: { formatter: '{value}%' },
                         splitLine: { lineStyle: { color: '#f5f5f5' } }
                     },
                     { 
                         type: 'value', show: showLine,
-                        name: 'Volumen Promedio de Obras', nameTextStyle: axisTextStyle,
+                        name: 'Volumen Promedio de Obras', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic' },
                         splitLine: { show: false }
                     }
                 ],
@@ -1530,6 +1556,7 @@
             chart12.setOption(option12, true);
         }
 
+        // Activadores reactivos de switches de control de ejes
         document.getElementById('toggleBarrasV12').addEventListener('change', renderVis12);
         document.getElementById('toggleCurvaV12').addEventListener('change', renderVis12);
         
@@ -1733,21 +1760,21 @@
                 let selAno = document.getElementById('filtroAnoVis12');
                 let selDewey = document.getElementById('filtroDeweyVis12');
                 
-                // Mapeo unificado de dimensiones ordenadas sin duplicación
-                let paises = [...new Set(rawDataV12.map(d => d['PAIS']))].filter(p => p && p !== 'TODOS').sort();
-                let anos = [...new Set(rawDataV12.map(d => d['ANO']))].filter(a => a && a !== 'TODOS').sort().reverse();
-                let deweys = [...new Set(rawDataV12.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat !== 'TODOS').sort();
+                // Mapeo unificado y ordenamiento dimensional libre de registros nulos o duplicados
+                let embeddingPaises = [...new Set(rawDataV12.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'TODOS').sort();
+                let embeddingAnos = [...new Set(rawDataV12.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV12.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
                 
-                paises.forEach(p => { let o = document.createElement('option'); o.value = p; o.innerHTML = p; selPais.appendChild(o); });
-                anos.forEach(a => { let o = document.createElement('option'); o.value = a; o.innerHTML = a; selAno.appendChild(o); });
-                deweys.forEach(cat => { let o = document.createElement('option'); o.value = cat; o.innerHTML = cat; selDewey.appendChild(o); });
+                embeddingPaises.forEach(p => { let o = document.createElement('option'); o.value = p; o.innerHTML = p; selPais.appendChild(o); });
+                embeddingAnos.forEach(a => { let o = document.createElement('option'); o.value = a; o.innerHTML = a; selAno.appendChild(o); });
+                embeddingDeweys.forEach(cat => { let o = document.createElement('option'); o.value = cat; o.innerHTML = cat; selDewey.appendChild(o); });
                 
-                // Registro reactivo de escuchadores de eventos cruzados
+                // Registro de escuchadores reactivos para la ejecución de filtros cruzados concurrentes
                 selPais.addEventListener('change', renderVis12);
                 selAno.addEventListener('change', renderVis12);
                 selDewey.addEventListener('change', renderVis12);
                 
-                // Renderizado inicial coordinado
+                // Inicialización y renderizado primario del gráfico de concentración
                 renderVis12();
             }
         });
