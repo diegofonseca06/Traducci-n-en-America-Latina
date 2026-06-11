@@ -1383,12 +1383,12 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles y Análisis Topológico)
+        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles Corregida al 100%)
         // =========================================================
         var chart12 = echarts.init(document.getElementById('vis12'));
         var rawDataV12 = [];
         
-        // Mapa estricto de colores para mantener consistencia inquebrantable
+        // Convención fija de colores inalterable para consistencia lingüística
         const colorMapIdiomas = {
             'INGLÉS': '#1F0F80', 'FRANCÉS': '#006DF7', 'ALEMÁN': '#817BA6', 
             'ITALIANO': '#A09CBE', 'PORTUGUÉS': '#17142B', 'JAPONÉS': '#E74C3C',
@@ -1409,7 +1409,6 @@
             let showBars = document.getElementById('toggleBarrasV12').checked;
             let showLine = document.getElementById('toggleCurvaV12').checked;
 
-            // 1. Parametrización y filtrado matricial
             let filtered = rawDataV12;
             if (paisVal !== 'TODOS') filtered = filtered.filter(d => d['PAIS'] === paisVal);
             if (anoVal !== 'TODOS') filtered = filtered.filter(d => d['ANO'] === anoVal);
@@ -1420,51 +1419,95 @@
                 return;
             }
 
-            // Mapeo seguro de etiquetas de deciles preservando el orden matemático interno
+            // Mapeo seguro de deciles preservando el orden jerárquico real
             let decilesLabels = [...new Set(filtered.map(d => d['DECILE_LABEL']))].sort((a,b) => {
                 let objA = filtered.find(x => x['DECILE_LABEL'] === a);
                 let objB = filtered.find(x => x['DECILE_LABEL'] === b);
                 return (parseInt(objA['DECILE_ORDER']) || 0) - (parseInt(objB['DECILE_ORDER']) || 0);
             });
 
-            // 2. ORDENAMIENTO ESTRUCTURAL DE CAPAS (De mayor a menor volumen)
-            let volIdiomas = {};
-            filtered.forEach(d => {
-                let idm = d['IDIOMA_ORIGEN'];
-                if (idm && idm !== 'SIN DATO' && idm !== 'SIN IDENTIFICAR') {
-                    volIdiomas[idm] = (volIdiomas[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
-                }
+            // --- ALGORITMO EXCLUSIVO DE UNIFICACIÓN DEL TOP 10 POR DECIL ---
+            let masterLanguageSet = new Set();
+            decilesLabels.forEach(label => {
+                let dataDecil = filtered.filter(d => d['DECILE_LABEL'] === label);
+                let langCounts = {};
+                dataDecil.forEach(d => {
+                    let idm = d['IDIOMA_ORIGEN'];
+                    if (idm && idm !== 'SIN DATO' && idm !== 'SIN IDENTIFICAR') {
+                        langCounts[idm] = (langCounts[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
+                    }
+                });
+                // Extraer el Top 10 local de este decil específico
+                let top10Decil = Object.keys(langCounts).sort((a, b) => langCounts[b] - langCounts[a]).slice(0, 10);
+                top10Decil.forEach(idm => masterLanguageSet.add(idm));
             });
 
-            // Ordenamiento por rango denso para inyección visual en capas
-            let idiomasPresentes = Object.keys(volIdiomas).sort((a, b) => volIdiomas[b] - volIdiomas[a]);
+            let unifiedLanguagesRaw = Array.from(masterLanguageSet);
+
+            // --- ORDENAMIENTO GRAVITACIONAL DE LAS FRANZAS ---
+            // Evaluamos el volumen global de la muestra para ordenar la serie de mayor a menor espesor
+            let globalLangVolume = {};
+            filtered.forEach(d => {
+                let idm = d['IDIOMA_ORIGEN'];
+                if (unifiedLanguagesRaw.includes(idm)) {
+                    globalLangVolume[idm] = (globalLangVolume[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
+                }
+            });
+            let unifiedLanguages = unifiedLanguagesRaw.sort((a, b) => globalLangVolume[b] - globalLangVolume[a]);
 
             let seriesData = [];
 
-            // 3. Empaquetado relacional para Series Apiladas
+            // --- CONSTRUCCIÓN DISTRIBUTIVA AL 100% ---
             if (showBars) {
-                idiomasPresentes.forEach((idm, idx) => {
-                    let dataSerie = decilesLabels.map(label => {
-                        let row = filtered.find(d => d['DECILE_LABEL'] === label && d['IDIOMA_ORIGEN'] === idm);
-                        if (!row) return 0;
-                        
-                        let totalDecil = filtered.filter(d => d['DECILE_LABEL'] === label)
-                                                 .reduce((s, r) => s + (parseInt(r['CANTIDAD_OBRAS_IDIOMA']) || 0), 0);
-                                                 
-                        let val = parseInt(row['CANTIDAD_OBRAS_IDIOMA']) || 0;
-                        return totalDecil > 0 ? ((val / totalDecil) * 100).toFixed(2) : 0;
+                let seriesDict = {};
+                unifiedLanguages.forEach(idm => seriesDict[idm] = []);
+                seriesDict['Otros'] = [];
+
+                decilesLabels.forEach(label => {
+                    let dataDecil = filtered.filter(d => d['DECILE_LABEL'] === label);
+                    let totalDecil = dataDecil.reduce((sum, r) => sum + parseInt(r['CANTIDAD_OBRAS_IDIOMA'] || 0), 0);
+
+                    let langCounts = {};
+                    dataDecil.forEach(d => {
+                        let idm = d['IDIOMA_ORIGEN'];
+                        langCounts[idm] = (langCounts[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
                     });
 
-                    // Cada idioma retiene de forma invulnerable su correlación cromática predeterminada
+                    // Carga relacional para los idiomas del catálogo maestro
+                    unifiedLanguages.forEach(idm => {
+                        let val = langCounts[idm] || 0;
+                        let pct = totalDecil > 0 ? (val / totalDecil) * 100 : 0;
+                        seriesDict[idm].push({ value: parseFloat(pct.toFixed(2)), realValue: val, label: label, idioma: idm });
+                    });
+
+                    // Acumulación neta del remanente en la categoría residual "Otros"
+                    let sumOtros = 0;
+                    dataDecil.forEach(d => {
+                        let idm = d['IDIOMA_ORIGEN'];
+                        if (!unifiedLanguages.includes(idm)) {
+                            sumOtros += parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
+                        }
+                    });
+                    let pctOtros = totalDecil > 0 ? (sumOtros / totalDecil) * 100 : 0;
+                    seriesDict['Otros'].push({ value: parseFloat(pctOtros.toFixed(2)), realValue: sumOtros, label: label, idioma: 'Otros' });
+                });
+
+                // Inyección ordenada en el motor gráfico (el más grueso se ancla en la base)
+                unifiedLanguages.forEach((idm, idx) => {
                     seriesData.push({
-                        name: idm, type: 'bar', stack: 'total', data: dataSerie,
+                        name: idm, type: 'bar', stack: 'total', data: seriesDict[idm],
                         itemStyle: { color: getIdiomaColor(idm, idx) },
                         emphasis: { focus: 'series' }
                     });
                 });
+                
+                // Anclar la franja residual "Otros" en la cúspide de la barra
+                seriesData.push({
+                    name: 'Otros', type: 'bar', stack: 'total', color: '#D5D8DC', data: seriesDict['Otros'],
+                    emphasis: { focus: 'series' }
+                });
             }
 
-            // 4. Integración de la variable secundaria de Productividad Neta
             if (showLine) {
                 let lineData = decilesLabels.map(label => {
                     let row = filtered.find(d => d['DECILE_LABEL'] === label);
@@ -1472,7 +1515,7 @@
                 });
 
                 seriesData.push({
-                    name: 'Promedio Per Cápita de Obras',
+                    name: 'Promedio de Obras',
                     type: 'line', yAxisIndex: 1, data: lineData,
                     symbolSize: 10, itemStyle: { color: '#E74C3C', borderWidth: 2 },
                     lineStyle: { width: 4, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.25)' },
@@ -1489,32 +1532,31 @@
                         let rows = filtered.filter(d => d['DECILE_LABEL'] === label);
                         if (rows.length === 0) return '';
                         
-                        // Extracción granular de métricas científicas
                         let avg = rows[0]['PROMEDIO_REGISTROS'] || 0;
                         let std = rows[0]['DESVIACION_ESTANDAR'] || 0;
                         let eds = rows[0]['CANTIDAD_EDITORIALES'] || 0;
 
-                        // DISEÑO MULTI-COLUMNA (Evita desbordamiento visual)
-                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:320px;">`;
+                        // --- MEJORA: INTERFAZ EN RED MODULAR (GRID DE 2 COLUMNAS) ---
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:340px; padding:2px;">`;
                         h += `<strong style="font-family:'Playfair Display', serif; font-size:1.2em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">Segmento: ${label}</strong>`;
                         h += `<span style="display:block; margin-bottom: 2px;">Promedio de producción: <b>${avg} ± ${std}</b> obras/ed.</span>`;
                         h += `<span style="display:block; margin-bottom: 12px;">Población del grupo: <b>${eds}</b> firmas editoriales</span>`;
                         
-                        h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:10px; border-bottom: 1px dashed #ddd; display:block; margin-bottom: 5px; padding-bottom: 3px;">Composición Lingüística (Catálogo del Segmento):</span>`;
+                        h += `<span style="color:#17142B; font-weight:bold; text-transform:uppercase; font-size:9px; border-bottom: 1px dashed #ddd; display:block; margin-bottom: 6px; padding-bottom: 3px; letter-spacing:0.5px;">Composición Lingüística (Ordenada por Peso):</span>`;
                         
                         let barParams = params.filter(p => p.seriesType === 'bar' && parseFloat(p.value) > 0);
                         barParams.sort((a,b) => parseFloat(b.value) - parseFloat(a.value));
                         
-                        // Generación de Cuadrícula Modular Interna para distribuir idiomas en 2 columnas perfectas
+                        // Contenedor CSS Grid para evitar desbordamiento vertical
                         h += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px; margin-top: 5px;">`;
                         barParams.forEach(p => {
                             h += `
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 115px;">
                                         <span style="display:inline-block;margin-right:5px;border-radius:50%;width:8px;height:8px;background-color:${p.color};"></span>
                                         ${p.seriesName}
                                     </span>
-                                    <strong style="margin-left:8px;">${parseFloat(p.value).toFixed(1)}%</strong>
+                                    <strong style="margin-left:5px; color:#1F0F80;">${parseFloat(p.value).toFixed(1)}%</strong>
                                 </div>`;
                         });
                         h += `</div></div>`;
@@ -1522,7 +1564,7 @@
                     }
                 },
                 legend: { type: 'scroll', bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 10 } },
-                grid: { left: '5%', right: '5%', bottom: '15%', top: '10%', containLabel: true },
+                grid: { left: '4%', right: '5%', bottom: '15%', top: '10%', containLabel: true },
                 xAxis: {
                     type: 'category', data: decilesLabels,
                     axisLabel: { interval: 0, rotate: 30, fontFamily: 'Inter', fontSize: 10, fontWeight: 'bold' }
@@ -1530,12 +1572,12 @@
                 yAxis: [
                     { 
                         type: 'value', max: 100, show: showBars,
-                        name: 'Volumen Compositivo (%)', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic', padding: [0, 0, 0, 30] },
+                        name: 'Volumen Compositivo (%)', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic', padding: [0, 0, 0, 20] },
                         axisLabel: { formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f5f5f5' } }
                     },
                     { 
                         type: 'value', show: showLine,
-                        name: 'Promedio Obras / Ed.', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic', padding: [0, 30, 0, 0] },
+                        name: 'Promedio Obras / Ed.', nameTextStyle: { fontFamily: 'Lora', fontStyle: 'italic', padding: [0, 20, 0, 0] },
                         splitLine: { show: false }
                     }
                 ],
@@ -1544,10 +1586,6 @@
 
             chart12.setOption(option12, true);
         }
-
-        // Suscriptores de Control de Toggles Paramétricos
-        document.getElementById('toggleBarrasV12').addEventListener('change', renderVis12);
-        document.getElementById('toggleCurvaV12').addEventListener('change', renderVis12);
 
         // =========================================================
         // PARSEO E INYECCIÓN DE DATOS PARA BALANCE DE EDICIÓN (VIS11)
@@ -1746,7 +1784,7 @@
                 let selAno = document.getElementById('filtroAnoVis12');
                 let selDewey = document.getElementById('filtroDeweyVis12');
                 
-                // Mapeo exhaustivo y eliminación de duplicidades estructurales
+                // Mapeo exhaustivo y ordenamiento de dimensiones sin duplicados
                 let paises = [...new Set(rawDataV12.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'TODOS').sort();
                 let anos = [...new Set(rawDataV12.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
                 let deweys = [...new Set(rawDataV12.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
@@ -1755,12 +1793,11 @@
                 anos.forEach(a => { let o = document.createElement('option'); o.value = a; o.innerHTML = a; selAno.appendChild(o); });
                 deweys.forEach(cat => { let o = document.createElement('option'); o.value = cat; o.innerHTML = cat; selDewey.appendChild(o); });
                 
-                // Vinculación de enrutadores cruzados
                 selPais.addEventListener('change', renderVis12);
                 selAno.addEventListener('change', renderVis12);
                 selDewey.addEventListener('change', renderVis12);
                 
-                // Despliegue gráfico originario
+                // Despliegue gráfico originario corregido
                 renderVis12();
             }
         });
