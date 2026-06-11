@@ -1629,7 +1629,7 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 7 (Sankey Bilingüe de 3 Capas Cruzadas)
+        // LÓGICA DE VISUALIZACIÓN 7 (Sankey Bilingüe de Traza Continua de 3 Capas)
         // =========================================================
         var chart7 = echarts.init(document.getElementById('vis7'));
         var rawDataV7 = [];
@@ -1639,7 +1639,7 @@
             let deweyFilter = document.getElementById('filtroDeweyVis7').value;
             let agentFilter = document.getElementById('filtroAgenteVis7').value;
 
-            // Filtrado paramétrico exacto sobre el cubo expandido pre-calculado
+            // Filtrado inmediato sobre la estructura indexada del cubo expandido
             let data = rawDataV7.filter(d => d['ANO'] === yearFilter && d['DEWEY PRINCIPAL'] === deweyFilter && d['TIPO_AGENTE'] === agentFilter);
 
             let linksMap = {};
@@ -1655,7 +1655,7 @@
                 }
             }
 
-            // Mapeo topológico trilineal indexado
+            // Mapeo topológico matricial de tres capas
             data.forEach(d => {
                 let val = parseInt(d['CANTIDAD'] || 0);
                 let pais = d['PAIS'];
@@ -1664,9 +1664,9 @@
                 let dest = d['IDIOMA_DESTINO_ST'] + ' (Destino)';
                 
                 if (val > 0 && pais && pais !== 'SIN DATO') {
-                    // Capa 1 a Capa 2
+                    // Enlace Capa 1 -> Capa 2
                     addLink(orig, pais, val, ed);
-                    // Capa 2 a Capa 3
+                    // Enlace Capa 2 -> Capa 3
                     addLink(pais, dest, val, ed);
                 }
             });
@@ -1687,7 +1687,8 @@
                     source: src,
                     target: tgt,
                     value: info.value,
-                    edits: info.edits
+                    edits: info.edits,
+                    lineStyle: { opacity: 0.25 } // Opacidad base sutil original
                 });
             });
 
@@ -1696,13 +1697,11 @@
             var option7 = {
                 tooltip: {
                     trigger: 'item',
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                    borderColor: '#1F0F80', 
-                    textStyle: { color: '#17142B' },
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
                     formatter: function (params) {
                         if (params.dataType === 'node') {
                             let nodeName = params.name.replace(' (Origen)', '').replace(' (Destino)', '');
-                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#1F0F80; font-size:1.1em;">Nodo: ${nodeName}</strong><br/>Volumen de Paso Total: <b>${params.value.toLocaleString()}</b> obras</div>`;
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#1F0F80; font-size:1.1em;">Nodo: ${nodeName}</strong><br/>Flujo Agregado de Paso: <b>${params.value.toLocaleString()}</b> obras</div>`;
                         }
                         
                         let src = params.data.source.replace(' (Origen)', '');
@@ -1710,7 +1709,6 @@
                         let val = params.data.value;
                         let edits = params.data.edits;
 
-                        // Extraer Top 5 de sellos editoriales excluyendo 'OTROS'
                         let topEdits = Object.keys(edits)
                             .map(k => ({ n: k, c: edits[k] }))
                             .filter(e => e.n !== 'OTROS')
@@ -1722,7 +1720,7 @@
                         h += `Volumen del Flujo: <b>${val.toLocaleString()}</b> publicaciones<br><br>`;
                         
                         if (topEdits.length > 0) {
-                            h += `<span style="color:#006DF7;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;">Top 5 Agentes en este Flujo:</span><br/>`;
+                            h += `<span style="color:#006DF7;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;">Top 5 Actores en este Flujo:</span><br/>`;
                             topEdits.forEach((e, i) => {
                                 h += `<span style="display:block;margin-top:4px;white-space: normal;line-height:1.2;"><b>${i+1}.</b> ${e.n} <b>(${e.c.toLocaleString()})</b></span>`;
                             });
@@ -1737,14 +1735,12 @@
                     type: 'sankey',
                     layout: 'none',
                     emphasis: { 
-                        focus: 'adjacency',
-                        itemStyle: { borderWidth: 2, borderColor: '#1F0F80' },
-                        lineStyle: { opacity: 0.85 }
+                        focus: 'none' // Desactivamos el focus nativo corto para delegarlo a nuestro manejador de traza continua
                     },
                     nodeAlign: 'justify',
                     data: nodesList,
                     links: linksList,
-                    lineStyle: { color: 'source', curveness: 0.5, opacity: 0.3 },
+                    lineStyle: { color: 'source', curveness: 0.5 },
                     itemStyle: { borderWidth: 1, borderColor: '#fff' },
                     label: { 
                         fontFamily: 'Inter', fontSize: 10, color: '#17142B', fontWeight: '600',
@@ -1757,6 +1753,66 @@
             if (linksList.length > 0) chart7.setOption(option7, true);
             else chart7.clear();
         }
+
+        // =========================================================
+        // MOTOR DE TRAZA CONTINUA CROSS-LAYER (MEJORA ESTÉTICA EXTRA)
+        // =========================================================
+        chart7.on('mouseover', function(params) {
+            if (params.dataType === 'edge' || params.dataType === 'node') {
+                let activeLanguage = '';
+                let activeCountry = '';
+                
+                if (params.dataType === 'edge') {
+                    let src = params.data.source;
+                    let tgt = params.data.target;
+                    if (src.includes('(Origen)')) {
+                        activeLanguage = src.replace(' (Origen)', '');
+                        activeCountry = tgt;
+                    } else if (tgt.includes('(Destino)')) {
+                        activeLanguage = tgt.replace(' (Destino)', '');
+                        activeCountry = src;
+                    }
+                } else {
+                    let name = params.name;
+                    if (name.includes('(Origen)')) activeLanguage = name.replace(' (Origen)', '');
+                    else if (name.includes('(Destino)')) activeLanguage = name.replace(' (Destino)', '');
+                    else activeCountry = name;
+                }
+
+                let highlightedLinks = chart7.getOption().series[0].links.map(link => {
+                    let matches = false;
+                    let s = link.source;
+                    let t = link.target;
+
+                    if (activeCountry && activeLanguage) {
+                        if (activeLanguage === 'Español') {
+                            matches = (s === 'Español (Origen)' && t === activeCountry) || (s === activeCountry && t === 'Portugués (Destino)');
+                        } else if (activeLanguage === 'Portugués') {
+                            matches = (s === 'Portugués (Origen)' && t === activeCountry) || (s === activeCountry && t === 'Español (Destino)');
+                        }
+                    } else if (activeCountry) {
+                        matches = (s === activeCountry || t === activeCountry);
+                    } else if (activeLanguage) {
+                        if (activeLanguage === 'Español') {
+                            matches = s.includes('Español (Origen)') || t.includes('Español (Destino)');
+                        } else if (activeLanguage === 'Portugués') {
+                            matches = s.includes('Portugués (Origen)') || t.includes('Portugués (Destino)');
+                        }
+                    }
+
+                    return { ...link, lineStyle: { ...link.lineStyle, opacity: matches ? 0.75 : 0.04 } };
+                });
+
+                chart7.setOption({ series: [{ links: highlightedLinks }] }, { lazyUpdate: true });
+            }
+        });
+
+        chart7.on('mouseout', function() {
+            let restoredLinks = chart7.getOption().series[0].links.map(link => {
+                return { ...link, lineStyle: { ...link.lineStyle, opacity: 0.25 } };
+            });
+            chart7.setOption({ series: [{ links: restoredLinks }] }, { lazyUpdate: true });
+        });
 
         
 
@@ -1989,7 +2045,7 @@
                 let selectAno = document.getElementById('filtroAnoVis7');
                 let selectDewey = document.getElementById('filtroDeweyVis7');
                 
-                // Mapeo unificado y ordenamiento de dimensiones sin duplicados
+                // Extraemos dimensiones únicas ignorando celdas vacías o metadatos genéricos
                 let embeddingAnos = [...new Set(rawDataV7.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
                 let embeddingDeweys = [...new Set(rawDataV7.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
                 
@@ -2001,7 +2057,7 @@
                 selectDewey.addEventListener('change', renderVis7);
                 document.getElementById('filtroAgenteVis7').addEventListener('change', renderVis7);
                 
-                // Despliegue gráfico originario
+                // Despliegue gráfico originario instantáneo
                 renderVis7();
             }
         });
