@@ -1629,18 +1629,23 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 7 (Sankey Bilingüe de Traza Continua de 3 Capas)
+        // LÓGICA DE VISUALIZACIÓN 7 (Sankey Bilingüe de Traza Continua e Inmune a Vacíos)
         // =========================================================
         var chart7 = echarts.init(document.getElementById('vis7'));
         var rawDataV7 = [];
 
         function renderVis7() {
-            let yearFilter = document.getElementById('filtroAnoVis7').value;
-            let deweyFilter = document.getElementById('filtroDeweyVis7').value;
-            let agentFilter = document.getElementById('filtroAgenteVis7').value;
+            let yearFilter = String(document.getElementById('filtroAnoVis7').value).trim();
+            let deweyFilter = String(document.getElementById('filtroDeweyVis7').value).trim();
+            let agentFilter = String(document.getElementById('filtroAgenteVis7').value).trim();
 
-            // Filtrado inmediato sobre la estructura indexada del cubo expandido
-            let data = rawDataV7.filter(d => d['ANO'] === yearFilter && d['DEWEY PRINCIPAL'] === deweyFilter && d['TIPO_AGENTE'] === agentFilter);
+            // Filtrado blindado con tipado estricto e inmune a espacios en blanco
+            let data = rawDataV7.filter(d => {
+                let rowAno = String(d['ANO'] || '').trim();
+                let rowDewey = String(d['DEWEY PRINCIPAL'] || '').trim();
+                let rowAgente = String(d['TIPO_AGENTE'] || '').trim();
+                return rowAno === yearFilter && rowDewey === deweyFilter && rowAgente === agentFilter;
+            });
 
             let linksMap = {};
 
@@ -1655,7 +1660,7 @@
                 }
             }
 
-            // Mapeo topológico matricial de tres capas
+            // Construcción de la topología trilineal
             data.forEach(d => {
                 let val = parseInt(d['CANTIDAD'] || 0);
                 let pais = d['PAIS'];
@@ -1664,9 +1669,9 @@
                 let dest = d['IDIOMA_DESTINO_ST'] + ' (Destino)';
                 
                 if (val > 0 && pais && pais !== 'SIN DATO') {
-                    // Enlace Capa 1 -> Capa 2
+                    // Tramo Capa 1 -> Capa 2
                     addLink(orig, pais, val, ed);
-                    // Enlace Capa 2 -> Capa 3
+                    // Tramo Capa 2 -> Capa 3
                     addLink(pais, dest, val, ed);
                 }
             });
@@ -1688,7 +1693,7 @@
                     target: tgt,
                     value: info.value,
                     edits: info.edits,
-                    lineStyle: { opacity: 0.25 } // Opacidad base sutil original
+                    lineStyle: { opacity: 0.25 } // Opacidad en reposo armónica
                 });
             });
 
@@ -1701,7 +1706,7 @@
                     formatter: function (params) {
                         if (params.dataType === 'node') {
                             let nodeName = params.name.replace(' (Origen)', '').replace(' (Destino)', '');
-                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#1F0F80; font-size:1.1em;">Nodo: ${nodeName}</strong><br/>Flujo Agregado de Paso: <b>${params.value.toLocaleString()}</b> obras</div>`;
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="color:#1F0F80; font-size:1.1em;">Nodo: ${nodeName}</strong><br/>Volumen total de paso: <b>${params.value.toLocaleString()}</b> obras</div>`;
                         }
                         
                         let src = params.data.source.replace(' (Origen)', '');
@@ -1734,9 +1739,7 @@
                 series: [{
                     type: 'sankey',
                     layout: 'none',
-                    emphasis: { 
-                        focus: 'none' // Desactivamos el focus nativo corto para delegarlo a nuestro manejador de traza continua
-                    },
+                    emphasis: { focus: 'none' }, // Desactivamos el foco nativo para delegarlo a la traza continua
                     nodeAlign: 'justify',
                     data: nodesList,
                     links: linksList,
@@ -1755,52 +1758,51 @@
         }
 
         // =========================================================
-        // MOTOR DE TRAZA CONTINUA CROSS-LAYER (MEJORA ESTÉTICA EXTRA)
+        // MOTOR DE RESALTADO DE TRAZA TRILINEAL CONTINUA (MEJORA ESTÉTICA)
         // =========================================================
         chart7.on('mouseover', function(params) {
             if (params.dataType === 'edge' || params.dataType === 'node') {
-                let activeLanguage = '';
-                let activeCountry = '';
-                
-                if (params.dataType === 'edge') {
-                    let src = params.data.source;
-                    let tgt = params.data.target;
-                    if (src.includes('(Origen)')) {
-                        activeLanguage = src.replace(' (Origen)', '');
-                        activeCountry = tgt;
-                    } else if (tgt.includes('(Destino)')) {
-                        activeLanguage = tgt.replace(' (Destino)', '');
-                        activeCountry = src;
-                    }
-                } else {
-                    let name = params.name;
-                    if (name.includes('(Origen)')) activeLanguage = name.replace(' (Origen)', '');
-                    else if (name.includes('(Destino)')) activeLanguage = name.replace(' (Destino)', '');
-                    else activeCountry = name;
-                }
+                let isEdge = (params.dataType === 'edge');
+                let edgeSource = isEdge ? params.data.source : '';
+                let edgeTarget = isEdge ? params.data.target : '';
+                let nodeName = !isEdge ? params.name : '';
 
                 let highlightedLinks = chart7.getOption().series[0].links.map(link => {
-                    let matches = false;
                     let s = link.source;
                     let t = link.target;
+                    let matches = false;
 
-                    if (activeCountry && activeLanguage) {
-                        if (activeLanguage === 'Español') {
-                            matches = (s === 'Español (Origen)' && t === activeCountry) || (s === activeCountry && t === 'Portugués (Destino)');
-                        } else if (activeLanguage === 'Portugués') {
-                            matches = (s === 'Portugués (Origen)' && t === activeCountry) || (s === activeCountry && t === 'Español (Destino)');
+                    if (isEdge) {
+                        // Resaltar el camino completo que cruza por la banda activa
+                        if (edgeSource.includes('(Origen)')) {
+                            let lang = edgeSource.replace(' (Origen)', '');
+                            let targetLangDest = (lang === 'Español') ? 'Portugués (Destino)' : 'Español (Destino)';
+                            matches = (s === edgeSource && t === edgeTarget) || (s === edgeTarget && t === targetLangDest);
+                        } else if (edgeTarget.includes('(Destino)')) {
+                            let langDest = edgeTarget.replace(' (Destino)', '');
+                            let sourceLangOrig = (langDest === 'Español') ? 'Portugués (Origen)' : 'Español (Origen)';
+                            matches = (s === edgeSource && t === edgeTarget) || (s === sourceLangOrig && t === edgeSource);
                         }
-                    } else if (activeCountry) {
-                        matches = (s === activeCountry || t === activeCountry);
-                    } else if (activeLanguage) {
-                        if (activeLanguage === 'Español') {
-                            matches = s.includes('Español (Origen)') || t.includes('Español (Destino)');
-                        } else if (activeLanguage === 'Portugués') {
-                            matches = s.includes('Portugués (Origen)') || t.includes('Portugués (Destino)');
+                    } else {
+                        // Resaltar el ecosistema completo asociado al nodo seleccionado
+                        if (nodeName.includes('(Origen)')) {
+                            let lang = nodeName.replace(' (Origen)', '');
+                            let targetLangDest = (lang === 'Español') ? 'Portugués (Destino)' : 'Español (Destino)';
+                            matches = (s === nodeName || t === targetLangDest);
+                        } else if (nodeName.includes('(Destino)')) {
+                            let langDest = nodeName.replace(' (Destino)', '');
+                            let sourceLangOrig = (langDest === 'Español') ? 'Portugués (Origen)' : 'Español (Origen)';
+                            matches = (t === nodeName || s === sourceLangOrig);
+                        } else {
+                            // Si se posa sobre un país, enciende todas sus entradas y salidas
+                            matches = (s === nodeName || t === nodeName);
                         }
                     }
 
-                    return { ...link, lineStyle: { ...link.lineStyle, opacity: matches ? 0.75 : 0.04 } };
+                    return {
+                        ...link,
+                        lineStyle: { ...link.lineStyle, opacity: matches ? 0.75 : 0.04 }
+                    };
                 });
 
                 chart7.setOption({ series: [{ links: highlightedLinks }] }, { lazyUpdate: true });
@@ -2033,7 +2035,7 @@
 
 
         // =========================================================
-        // PARSEO E INYECCIÓN DE DATOS PARA EL PUENTE BILINGÜE (VIS7)
+        // PARSEO E INYECCIÓN DE DATOS (VIS7)
         // =========================================================
         Papa.parse('Base_Puente_Bilingue_Ultra_Resumida.csv', {
             download: true, 
@@ -2045,19 +2047,19 @@
                 let selectAno = document.getElementById('filtroAnoVis7');
                 let selectDewey = document.getElementById('filtroDeweyVis7');
                 
-                // Extraemos dimensiones únicas ignorando celdas vacías o metadatos genéricos
+                // Mapeo unificado excluyendo el indicador literal 'TODOS' de los menús web
                 let embeddingAnos = [...new Set(rawDataV7.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
                 let embeddingDeweys = [...new Set(rawDataV7.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
                 
                 embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
                 embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
                 
-                // Registro simultáneo de manejadores de eventos cruzados
+                // Vinculación unificada de escuchadores de eventos cruzados
                 selectAno.addEventListener('change', renderVis7);
                 selectDewey.addEventListener('change', renderVis7);
                 document.getElementById('filtroAgenteVis7').addEventListener('change', renderVis7);
                 
-                // Despliegue gráfico originario instantáneo
+                // Inicialización inmediata de la visualización bilingüe
                 renderVis7();
             }
         });
