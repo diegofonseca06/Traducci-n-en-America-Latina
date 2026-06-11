@@ -1383,12 +1383,11 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles Corregida al 100%)
+        // LÓGICA DE VISUALIZACIÓN 12 (Pirámide de Deciles Corregida)
         // =========================================================
         var chart12 = echarts.init(document.getElementById('vis12'));
         var rawDataV12 = [];
         
-        // Convención fija de colores inalterable para consistencia lingüística
         const colorMapIdiomas = {
             'INGLÉS': '#1F0F80', 'FRANCÉS': '#006DF7', 'ALEMÁN': '#817BA6', 
             'ITALIANO': '#A09CBE', 'PORTUGUÉS': '#17142B', 'JAPONÉS': '#E74C3C',
@@ -1409,24 +1408,21 @@
             let showBars = document.getElementById('toggleBarrasV12').checked;
             let showLine = document.getElementById('toggleCurvaV12').checked;
 
-            let filtered = rawDataV12;
-            if (paisVal !== 'TODOS') filtered = filtered.filter(d => d['PAIS'] === paisVal);
-            if (anoVal !== 'TODOS') filtered = filtered.filter(d => d['ANO'] === anoVal);
-            if (deweyVal !== 'TODOS') filtered = filtered.filter(d => d['DEWEY PRINCIPAL'] === deweyVal);
+            // Filtro exacto de la "Fotografía / Universo Cerrado" generado por Python
+            let filtered = rawDataV12.filter(d => d['PAIS'] === paisVal && d['ANO'] === anoVal && d['DEWEY PRINCIPAL'] === deweyVal);
             
             if (filtered.length === 0) {
                 chart12.clear();
                 return;
             }
 
-            // Mapeo seguro de deciles preservando el orden jerárquico real
             let decilesLabels = [...new Set(filtered.map(d => d['DECILE_LABEL']))].sort((a,b) => {
                 let objA = filtered.find(x => x['DECILE_LABEL'] === a);
                 let objB = filtered.find(x => x['DECILE_LABEL'] === b);
                 return (parseInt(objA['DECILE_ORDER']) || 0) - (parseInt(objB['DECILE_ORDER']) || 0);
             });
 
-            // --- ALGORITMO EXCLUSIVO DE UNIFICACIÓN DEL TOP 10 POR DECIL ---
+            // --- ALGORITMO DE UNIFICACIÓN: Top 10 Idiomas de cada Decil ---
             let masterLanguageSet = new Set();
             decilesLabels.forEach(label => {
                 let dataDecil = filtered.filter(d => d['DECILE_LABEL'] === label);
@@ -1437,15 +1433,13 @@
                         langCounts[idm] = (langCounts[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
                     }
                 });
-                // Extraer el Top 10 local de este decil específico
                 let top10Decil = Object.keys(langCounts).sort((a, b) => langCounts[b] - langCounts[a]).slice(0, 10);
                 top10Decil.forEach(idm => masterLanguageSet.add(idm));
             });
 
             let unifiedLanguagesRaw = Array.from(masterLanguageSet);
 
-            // --- ORDENAMIENTO GRAVITACIONAL DE LAS FRANZAS ---
-            // Evaluamos el volumen global de la muestra para ordenar la serie de mayor a menor espesor
+            // Ordenamiento Gravitacional: de mayor a menor volumen global en este universo
             let globalLangVolume = {};
             filtered.forEach(d => {
                 let idm = d['IDIOMA_ORIGEN'];
@@ -1457,7 +1451,6 @@
 
             let seriesData = [];
 
-            // --- CONSTRUCCIÓN DISTRIBUTIVA AL 100% ---
             if (showBars) {
                 let seriesDict = {};
                 unifiedLanguages.forEach(idm => seriesDict[idm] = []);
@@ -1473,18 +1466,15 @@
                         langCounts[idm] = (langCounts[idm] || 0) + parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
                     });
 
-                    // Carga relacional para los idiomas del catálogo maestro
                     unifiedLanguages.forEach(idm => {
                         let val = langCounts[idm] || 0;
                         let pct = totalDecil > 0 ? (val / totalDecil) * 100 : 0;
                         seriesDict[idm].push({ value: parseFloat(pct.toFixed(2)), realValue: val, label: label, idioma: idm });
                     });
 
-                    // Acumulación neta del remanente en la categoría residual "Otros"
                     let sumOtros = 0;
                     dataDecil.forEach(d => {
-                        let idm = d['IDIOMA_ORIGEN'];
-                        if (!unifiedLanguages.includes(idm)) {
+                        if (!unifiedLanguages.includes(d['IDIOMA_ORIGEN'])) {
                             sumOtros += parseInt(d['CANTIDAD_OBRAS_IDIOMA'] || 0);
                         }
                     });
@@ -1492,16 +1482,13 @@
                     seriesDict['Otros'].push({ value: parseFloat(pctOtros.toFixed(2)), realValue: sumOtros, label: label, idioma: 'Otros' });
                 });
 
-                // Inyección ordenada en el motor gráfico (el más grueso se ancla en la base)
                 unifiedLanguages.forEach((idm, idx) => {
                     seriesData.push({
                         name: idm, type: 'bar', stack: 'total', data: seriesDict[idm],
-                        itemStyle: { color: getIdiomaColor(idm, idx) },
-                        emphasis: { focus: 'series' }
+                        itemStyle: { color: getIdiomaColor(idm, idx) }, emphasis: { focus: 'series' }
                     });
                 });
                 
-                // Anclar la franja residual "Otros" en la cúspide de la barra
                 seriesData.push({
                     name: 'Otros', type: 'bar', stack: 'total', color: '#D5D8DC', data: seriesDict['Otros'],
                     emphasis: { focus: 'series' }
@@ -1536,7 +1523,7 @@
                         let std = rows[0]['DESVIACION_ESTANDAR'] || 0;
                         let eds = rows[0]['CANTIDAD_EDITORIALES'] || 0;
 
-                        // --- MEJORA: INTERFAZ EN RED MODULAR (GRID DE 2 COLUMNAS) ---
+                        // TOOLTIP EN CUADRÍCULA (GRID) DE 2 COLUMNAS
                         let h = `<div style="font-family:'Inter'; font-size:12px; min-width:340px; padding:2px;">`;
                         h += `<strong style="font-family:'Playfair Display', serif; font-size:1.2em; color:#1F0F80; border-bottom:1px solid #eee; display:block; margin-bottom:8px; padding-bottom:4px;">Segmento: ${label}</strong>`;
                         h += `<span style="display:block; margin-bottom: 2px;">Promedio de producción: <b>${avg} ± ${std}</b> obras/ed.</span>`;
@@ -1547,7 +1534,6 @@
                         let barParams = params.filter(p => p.seriesType === 'bar' && parseFloat(p.value) > 0);
                         barParams.sort((a,b) => parseFloat(b.value) - parseFloat(a.value));
                         
-                        // Contenedor CSS Grid para evitar desbordamiento vertical
                         h += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px; margin-top: 5px;">`;
                         barParams.forEach(p => {
                             h += `
