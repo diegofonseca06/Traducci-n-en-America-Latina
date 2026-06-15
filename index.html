@@ -2497,7 +2497,7 @@
 
 
         // =========================================================
-        // PARSEO COORDINADO EN PARALELO PARA ARCHIVOS FRAGMENTADOS (VIS6)
+        // PARSEO COORDINADO EN PARALELO PARA ARCHIVOS FRAGMENTADOS (VIS6) - CORREGIDO
         // =========================================================
         let datosFragmento1 = [];
         let datosFragmento2 = [];
@@ -2506,7 +2506,7 @@
         function verificarYConsolidarMatriz() {
             fragmentosCargados++;
             
-            // Cuando ambas promesas asíncronas de PapaParse terminen, fusionamos las matrices
+            // Cuando ambas promesas asíncronas de PapaParse concluyen con éxito, consolidamos en memoria
             if (fragmentosCargados === 2) {
                 rawDataV6 = datosFragmento1.concat(datosFragmento2);
                 
@@ -2514,24 +2514,37 @@
                 let selectDewey = document.getElementById('filtroDeweyVis6');
                 let selectAgente = document.getElementById('filtroAgenteVis6');
                 
-                // Mapeo unificado y ordenamiento dimensional libre de duplicados
+                // Extracción indexada libre de registros duplicados
                 let embeddingPaises = [...new Set(rawDataV6.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'CONTINENTAL').sort();
                 let embeddingDeweys = [...new Set(rawDataV6.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
                 
-                embeddingPaises.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p; selectPais.appendChild(opt); });
-                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(cat); });
+                // Inyección ordenada de opciones en el menú geográfico
+                embeddingPaises.forEach(p => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = p; 
+                    opt.innerHTML = p; 
+                    selectPais.appendChild(opt); 
+                });
+                
+                // Inyección ordenada de opciones en el menú Dewey (CORREGIDO)
+                embeddingDeweys.forEach(cat => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = cat; 
+                    opt.innerHTML = cat; 
+                    selectDewey.appendChild(opt); // <-- Se corrige el nodo de inyección
+                });
 
-                // Asignación de los escuchadores interactivos cruzados
+                // Registro de escuchadores de eventos cruzados concurrentes
                 selectPais.addEventListener('change', renderVis6);
                 selectDewey.addEventListener('change', renderVis6);
                 selectAgente.addEventListener('change', renderVis6);
                 
-                // Ejecución inicial de la carrera de barras animada
+                // Ejecución y renderizado del primer cuadro animado del Bar Chart Race
                 renderVis6();
             }
         }
 
-        // Carga simultánea en paralelo de ambas partes de la base de datos
+        // Carga simultánea en hilos asíncronos paralelos para no bloquear el navegador
         Papa.parse('Base_Metamorfosis_Parte1.csv', {
             download: true, 
             header: true,
