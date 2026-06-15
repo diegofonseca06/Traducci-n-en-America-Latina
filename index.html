@@ -2067,7 +2067,7 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 6 (Bar Chart Race con Linea de Tiempo)
+        // LÓGICA DE VISUALIZACIÓN 6 (Bar Chart Race con Linea de Tiempo Corregida)
         // =========================================================
         var chart6 = echarts.init(document.getElementById('vis6'));
         var rawDataV6 = [];
@@ -2083,7 +2083,7 @@
                        String(d['TIPO_AGENTE']).trim() === agenteSelected;
             });
 
-            // Extracción e indexación ordenada de la línea de tiempo 2010 - 2025
+            // Extracción de la línea de tiempo 2010 - 2025
             let anos = [...new Set(rawDataV6.map(d => String(d['ANO']).trim()))].filter(a => a >= '2010' && a <= '2025').sort();
 
             function parseTopStr(str) {
@@ -2094,11 +2094,10 @@
                 });
             }
 
-            // Construir la matriz de animación y las opciones de gráficos estado a estado (un cuadro por año)
+            // Construir las opciones para cada año del Timeline (un cuadro animado por año)
             let timelineOptions = anos.map(ano => {
                 let dataAno = dataFiltrada.filter(d => String(d['ANO']).trim() === ano);
                 
-                // Mapeamos el total por nombre de Dewey para identificar el ranking activo de este "Frame" temporal
                 let generosMap = {};
                 dataAno.forEach(d => {
                     let gen = d['NOMBRE DEWEY'];
@@ -2107,7 +2106,6 @@
                     }
                 });
 
-                // Top 10 que empuja la carrera hacia adelante en este año específico (de menor a mayor para eje Y horizontal)
                 let sortedGen = Object.keys(generosMap)
                     .map(k => ({ name: k, value: generosMap[k] }))
                     .sort((a,b) => a.value - b.value);
@@ -2125,10 +2123,9 @@
                         name: 'Publicaciones Traducción',
                         type: 'bar',
                         data: top10.map(i => i.value),
-                        realtimeSort: true, // Esto habilita el ordenamiento cruzado fluido (la carrera)
+                        realtimeSort: true, 
                         itemStyle: { 
                             color: function(params) {
-                                // Hasheado fijo para anclar cromáticamente cada tema a través del tiempo sin importar su salto de posiciones
                                 const colors = ['#1F0F80', '#006DF7', '#817BA6', '#A09CBE', '#3498DB', '#E74C3C', '#27AE60', '#F1C40F', '#1ABC9C', '#9B59B6'];
                                 let hash = 0;
                                 for (let i = 0; i < params.name.length; i++) hash = params.name.charCodeAt(i) + ((hash << 5) - hash);
@@ -2153,18 +2150,45 @@
                         lineStyle: { color: '#006DF7' },
                         checkpointStyle: { color: '#1F0F80', borderColor: '#F7FBFF', borderWidth: 2 },
                         controlStyle: { color: '#006DF7', borderColor: '#006DF7' },
-                        progress: { lineStyle: { color: '#006DF7' } }
+                        progress: { lineStyle: { color: '#006DF7' } },
+                        // AJUSTE 1: Tooltip exclusivo para los botones de los años en el slider
+                        tooltip: {
+                            show: true,
+                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                            borderColor: '#1F0F80',
+                            textStyle: { color: '#17142B' },
+                            formatter: function(p) {
+                                let añoTarget = String(p.name).trim();
+                                // Sumar dinámicamente el volumen total real de ese año bajo los filtros activos
+                                let totalAnual = dataFiltrada.filter(d => String(d['ANO']).trim() === añoTarget)
+                                                             .reduce((sum, r) => sum + parseInt(r['CANTIDAD'] || 0), 0);
+                                return `<div style="font-family:'Inter'; font-size:12px; padding: 4px 8px;">
+                                            <strong style="font-family:'Playfair Display', serif; color:#1F0F80; font-size:1.15em;">Año: ${añoTarget}</strong><br/>
+                                            Total publicaciones: <b>${totalAnual.toLocaleString()}</b>
+                                        </div>`;
+                            }
+                        }
                     },
                     tooltip: {
                         trigger: 'item',
                         backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
                         extraCssText: 'box-shadow: 0px 4px 15px rgba(0,0,0,0.12); border-radius: 6px;',
                         formatter: function(params) {
+                            // AJUSTE 2: Cláusula de protección si el evento del slider se filtra al Tooltip global
+                            if (params.componentType === 'timeline') {
+                                let añoTarget = String(params.name).trim();
+                                let totalAnual = dataFiltrada.filter(d => String(d['ANO']).trim() === añoTarget)
+                                                             .reduce((sum, r) => sum + parseInt(r['CANTIDAD'] || 0), 0);
+                                return `<div style="font-family:'Inter'; font-size:12px; padding: 4px 8px;">
+                                            <strong style="font-family:'Playfair Display', serif; color:#1F0F80; font-size:1.15em;">Año: ${añoTarget}</strong><br/>
+                                            Total publicaciones: <b>${totalAnual.toLocaleString()}</b>
+                                        </div>`;
+                            }
+
                             let genName = params.name;
                             let currentYear = anos[chart6.getOption().timeline[0].currentIndex];
                             let totalBarra = parseInt(params.value || 0);
                             
-                            // Vinculación estricta con la fila activa calculada en el servidor (Colab)
                             let row = dataFiltrada.find(d => String(d['ANO']).trim() === currentYear && d['NOMBRE DEWEY'] === genName);
 
                             let topLangs = row ? parseTopStr(row['TOP_IDIOMAS']) : [];
@@ -2176,7 +2200,6 @@
                             
                             h += `<div style="display: flex; gap: 15px; align-items: flex-start; justify-content: space-between;">`;
 
-                            // Columna 1: Idiomas de Origen
                             if (topLangs.length > 0) {
                                 h += `<div style="flex: 1; max-width: 45%;">`;
                                 h += `<span style="color:#006DF7;font-weight:bold;text-transform:uppercase;font-size:9px;display:block;margin-bottom:6px;">Top 3 Raíces Lingüísticas:</span>`;
@@ -2190,7 +2213,6 @@
                                 h += `</div>`;
                             }
 
-                            // Columna 2: Sellos Editoriales
                             if (topEdits.length > 0) {
                                 let bLeft = topLangs.length > 0 ? 'border-left: 1px solid #eee; padding-left: 15px;' : '';
                                 h += `<div style="flex: 1; max-width: 55%; ${bLeft}">`;
@@ -2215,10 +2237,8 @@
                 options: timelineOptions
             };
 
-            // Aplicamos animación suave sin destruir la vista previa (notMerge: false)
             chart6.setOption(option6, { notMerge: true });
         }
-
         
 
         // =========================================================
