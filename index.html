@@ -628,6 +628,60 @@
         </div>
     </section>
 
+    <section id="seccionVis9" class="visualization-section reveal">
+        <div class="container">
+            <div class="row align-items-center">
+                
+                <div class="col-lg-5 delay-text">
+                    <h2 class="chart-title">La Anatomía del Catálogo: Idiomas y Géneros</h2>
+                    <p class="chart-description">
+                        ¿Qué lenguas de origen dominan la importación de poesía? ¿Desde qué matrices lingüísticas se traducen los grandes tratados científicos o históricos? Esta visualización estructural revela la red distributiva de conexiones directas entre los principales idiomas de origen y las clasificaciones temáticas más fuertes de la región.
+                        <br><br>
+                        El diagrama de Sankey rastrea el flujo de izquierda a derecha: el recorrido se inicia en las <strong>Raíces Lingüísticas</strong> (origen) y desemboca en las diversas <strong>Especialidades Temáticas</strong> de la columna Nombre Dewey (destino). El grosor de cada banda conector representa el volumen neto de obras de dicha intersección.
+                        <br><br>
+                        <em>Interacción Avanzada:</em> Ajuste concurrentemente los selectores para delimitar el mapa a un territorio geográfico, un año de edición, una categoría principal o un perfil de agente editorial específico. <strong>Pase el cursor sobre cualquier banda fluida</strong> para desplegar el volumen porcentual exacto y el <strong>Top 5 de sellos editoriales</strong> responsables de dicho intercambio cultural.
+                    </p>
+                    
+                    <div class="filter-container">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Ámbito Geográfico:</label>
+                                <select id="filtroPaisVis9" class="custom-select">
+                                    <option value="TODOS">Todos los países (Continental)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Año de Publicación:</label>
+                                <select id="filtroAnoVis9" class="custom-select">
+                                    <option value="TODOS">Todos los años históricos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría Principal (Dewey):</label>
+                                <select id="filtroDeweyVis9" class="custom-select">
+                                    <option value="TODOS">Todas las categorías principales</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Perfil de Agente Editorial:</label>
+                                <select id="filtroAgenteVis9" class="custom-select">
+                                    <option value="TODOS">Todos los agentes (Sin filtro)</option>
+                                    <option value="EDITORIAL COMERCIAL">Editorial Comercial</option>
+                                    <option value="EDITORIAL UNIVERSITARIA">Editorial Universitaria</option>
+                                    <option value="AMBAS">Ambas (Comercial + Universitaria)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div id="vis9" class="chart-container" style="height: 650px; width: 100%;"></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
     
 
     <script>
@@ -2239,6 +2293,120 @@
 
             chart6.setOption(option6, { notMerge: true });
         }
+
+
+        // =========================================================
+        // LÓGICA DE VISUALIZACIÓN 9 (Anatomía del Catálogo - Sankey Cruzado Idiomas-Temas)
+        // =========================================================
+        var chart9 = echarts.init(document.getElementById('vis9'));
+        var rawDataV9 = [];
+
+        function renderVis9() {
+            let paisFilter = String(document.getElementById('filtroPaisVis9').value).trim();
+            let anoFilter = String(document.getElementById('filtroAnoVis9').value).trim();
+            let deweyFilter = String(document.getElementById('filtroDeweyVis9').value).trim();
+            let agentFilter = String(document.getElementById('filtroAgenteVis9').value).trim();
+
+            // Filtrado paramétrico estricto cruzado sobre la matriz del cubo expandido
+            let filteredData = rawDataV9.filter(d => {
+                return String(d['PAIS'] || '').trim() === paisFilter &&
+                       String(d['ANO'] || '').trim() === anoFilter &&
+                       String(d['DEWEY PRINCIPAL'] || '').trim() === deweyFilter &&
+                       String(d['TIPO_AGENTE'] || '').trim() === agentFilter;
+            });
+
+            let nodesSet = new Set();
+            let linksList = [];
+
+            function parseTopStr(str) {
+                if (!str || str.trim() === '') return [];
+                return str.split('~~').map(item => {
+                    let parts = item.split('::');
+                    return { n: parts[0], c: parseInt(parts[1]) };
+                });
+            }
+
+            filteredData.forEach(d => {
+                let idm = d['IDIOMA_ORIGEN'];
+                let dw = d['NOMBRE_DEWEY'];
+                let val = parseInt(d['CANTIDAD'] || 0);
+                let topEditsStr = d['TOP_EDITORIALES'] || '';
+
+                if (idm && dw && val > 0) {
+                    // Agregamos un sufijo espacial invisible para diferenciar nodos de origen y destino en el árbol topológico
+                    let sourceName = idm;
+                    let targetName = dw + ' ';
+
+                    nodesSet.add(sourceName);
+                    nodesSet.add(targetName);
+
+                    linksList.push({
+                        source: sourceName,
+                        target: targetName,
+                        value: val,
+                        topEdits: parseTopStr(topEditsStr)
+                    });
+                }
+            });
+
+            let nodesList = Array.from(nodesSet).map(n => ({ name: n }));
+
+            var option9 = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    formatter: function (params) {
+                        if (params.dataType === 'node') {
+                            let cleanNode = params.name.trim();
+                            return `<div style="font-family:'Inter'; font-size:12px;"><strong style="font-family:'Playfair Display',serif; color:#1F0F80; font-size:1.15em;">Entidad: ${cleanNode}</strong><br/>Volumen total absorbido: <b>${params.value.toLocaleString()}</b> publicaciones</div>`;
+                        }
+                        
+                        let src = params.data.source.trim();
+                        let tgt = params.data.target.trim();
+                        let val = params.data.value;
+                        let topEdits = params.data.topEdits || [];
+
+                        let h = `<div style="font-family:'Inter'; font-size:12px; min-width:270px; padding:2px;">`;
+                        h += `<strong style="font-family: 'Playfair Display', serif; font-size: 1.15em; color: #1F0F80; border-bottom: 1px solid #ccc; display: block; margin-bottom: 8px; padding-bottom: 5px;">Flujo: ${src} ➔ ${tgt}</strong>`;
+                        h += `Obras Traducidas: <b>${val.toLocaleString()}</b> publicaciones<br><br>`;
+                        
+                        if (topEdits.length > 0) {
+                            h += `<span style="color:#006DF7;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;">Top 5 Sellos Editoriales en este Canal:</span><br/>`;
+                            topEdits.forEach((e, i) => {
+                                // El porcentaje se calcula en tiempo real respecto al total específico de la banda activa (Rigor Matemático)
+                                let pct = ((e.c / val) * 100).toFixed(1);
+                                h += `<div style="display:flex; justify-content:space-between; margin-top:4px; border-bottom:1px dotted #f0f0f0; padding-bottom:2px; gap:10px;">
+                                        <span style="white-space: normal; line-height:1.2;"><b>${i+1}.</b> ${e.n}</span>
+                                        <strong>${pct}%</strong>
+                                      </div>`;
+                            });
+                        } else {
+                            h += `<span style="font-size: 0.9em; font-style: italic; color: #817BA6;">Detalle editorial corporativo no especificado</span>`;
+                        }
+                        h += `</div>`;
+                        return h;
+                    }
+                },
+                series: [{
+                    type: 'sankey',
+                    layout: 'none',
+                    emphasis: { focus: 'adjacency' },
+                    nodeAlign: 'justify',
+                    data: nodesList,
+                    links: linksList,
+                    lineStyle: { color: 'source', curveness: 0.5, opacity: 0.35 },
+                    itemStyle: { borderWidth: 1, borderColor: '#fff' },
+                    label: { 
+                        fontFamily: 'Inter', fontSize: 10, color: '#17142B', fontWeight: '600',
+                        formatter: p => p.name.trim().length > 25 ? p.name.trim().substring(0,23) + '..' : p.name.trim() 
+                    }
+                }],
+                color: ['#1F0F80', '#006DF7', '#817BA6', '#17142B', '#A09CBE', '#3498DB', '#95A5A6', '#E74C3C', '#2C3E50', '#27AE60']
+            };
+
+            if (linksList.length > 0) chart9.setOption(option9, true);
+            else chart9.clear();
+        }
         
 
         // =========================================================
@@ -2582,6 +2750,76 @@
             complete: function(results) {
                 datosFragmento2 = results.data;
                 verificarYConsolidarMatriz();
+            }
+        });
+
+
+        // =========================================================
+        // PARSEO COORDINADO EN PARALELO PARA ARCHIVOS FRAGMENTADOS (VIS8)
+        // =========================================================
+        let datosDivergencias1 = [];
+        let datosDivergencias2 = [];
+        let fragmentosDivergenciasCargados = 0;
+
+        function verificarYConsolidarDivergencias() {
+            fragmentosDivergenciasCargados++;
+            
+            // Cuando ambas promesas asíncronas de PapaParse concluyen con éxito, consolidamos en memoria
+            if (fragmentosDivergenciasCargados === 2) {
+                rawDataV8 = datosDivergencias1.concat(datosDivergencias2);
+                
+                let selectAno = document.getElementById('filtroAnoVis8');
+                let selectDewey = document.getElementById('filtroDeweyVis8');
+                let selectAgente = document.getElementById('filtroAgenteVis8');
+                
+                // Extracción indexada libre de registros duplicados
+                let embeddingAnos = [...new Set(rawDataV8.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV8.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
+                
+                // Inyección ordenada de opciones en el menú de Años
+                embeddingAnos.forEach(a => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = a; 
+                    opt.innerHTML = a; 
+                    selectAno.appendChild(opt); 
+                });
+                
+                // Inyección ordenada de opciones en el menú Dewey
+                embeddingDeweys.forEach(cat => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = cat; 
+                    opt.innerHTML = cat; 
+                    selectDewey.appendChild(opt); 
+                });
+
+                // Registro unificado de escuchadores de eventos cruzados concurrentes
+                selectAno.addEventListener('change', renderVis8);
+                selectDewey.addEventListener('change', renderVis8);
+                selectAgente.addEventListener('change', renderVis8);
+                
+                // Renderizado inicial coordinado del gráfico de tornado
+                renderVis8();
+            }
+        }
+
+        // Carga simultánea en hilos asíncronos paralelos de PapaParse
+        Papa.parse('Base_Divergencias_Parte1.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                datosDivergencias1 = results.data;
+                verificarYConsolidarDivergencias();
+            }
+        });
+
+        Papa.parse('Base_Divergencias_Parte2.csv', {
+            download: true, 
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                datosDivergencias2 = results.data;
+                verificarYConsolidarDivergencias();
             }
         });
         
