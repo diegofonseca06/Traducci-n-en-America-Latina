@@ -637,34 +637,34 @@
                     <p class="chart-description">
                         ¿Qué lenguas de origen dominan la importación de poesía? ¿Desde qué matrices lingüísticas se traducen los grandes tratados científicos o históricos? Esta visualización estructural revela la red distributiva de conexiones directas entre los principales idiomas de origen y las clasificaciones temáticas más fuertes de la región.
                         <br><br>
-                        El diagrama de Sankey rastrea el flujo de izquierda a derecha: el recorrido se inicia en las <strong>Raíces Lingüísticas</strong> (origen) y desemboca en las diversas <strong>Especialidades Temáticas</strong> de la columna Nombre Dewey (destino). El grosor de cada banda conector representa el volumen neto de obras de dicha intersección.
+                        El diagrama de Sankey rastrea el flujo de izquierda a derecha: el recorrido se inicia en las <strong>Raíces Lingüísticas</strong> (origen) y desemboca en las diversas <strong>Especialidades Temáticas</strong> de la columna Nombre Dewey (destino). El grosor de cada banda conector representa el volumen de obras de dicha combinación.
                         <br><br>
-                        <em>Interacción Avanzada:</em> Ajuste concurrentemente los selectores para delimitar el mapa a un territorio geográfico, un año de edición, una categoría principal o un perfil de agente editorial específico. <strong>Pase el cursor sobre cualquier banda fluida</strong> para desplegar el volumen porcentual exacto y el <strong>Top 5 de sellos editoriales</strong> responsables de dicho intercambio cultural.
+                        <em>Interacción Avanzada:</em> Ajuste los filtros para delimitar el mapa a un territorio geográfico, un año de edición, una categoría principal o un perfil de agente editorial específico. <strong>Pase el cursor sobre cualquier banda fluida</strong> para desplegar el volumen porcentual exacto y el <strong>Top 5 de sellos editoriales</strong> responsables de dicho intercambio cultural.
                     </p>
                     
                     <div class="filter-container">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Ámbito Geográfico:</label>
-                                <select id="filtroPaisVis9" class="custom-select">
+                                <select id="filtroPaisVis9" class="custom-select" style="font-size: 1.1rem; width: 100%;">
                                     <option value="TODOS">Todos los países (Continental)</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Año de Publicación:</label>
-                                <select id="filtroAnoVis9" class="custom-select">
+                                <select id="filtroAnoVis9" class="custom-select" style="font-size: 1.1rem; width: 100%;">
                                     <option value="TODOS">Todos los años históricos</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Categoría Principal (Dewey):</label>
-                                <select id="filtroDeweyVis9" class="custom-select">
+                                <select id="filtroDeweyVis9" class="custom-select" style="font-size: 1.1rem; width: 100%;">
                                     <option value="TODOS">Todas las categorías principales</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-family: sans-serif;">Perfil de Agente Editorial:</label>
-                                <select id="filtroAgenteVis9" class="custom-select">
+                                <select id="filtroAgenteVis9" class="custom-select" style="font-size: 1.1rem; width: 100%;">
                                     <option value="TODOS">Todos los agentes (Sin filtro)</option>
                                     <option value="EDITORIAL COMERCIAL">Editorial Comercial</option>
                                     <option value="EDITORIAL UNIVERSITARIA">Editorial Universitaria</option>
@@ -2296,7 +2296,7 @@
 
 
         // =========================================================
-        // LÓGICA DE VISUALIZACIÓN 9 (Anatomía del Catálogo - Sankey Cruzado Idiomas-Temas)
+        // LÓGICA DE VISUALIZACIÓN 15 (Sankey Cruzado Idiomas-Temas Unificado)
         // =========================================================
         var chart9 = echarts.init(document.getElementById('vis9'));
         var rawDataV9 = [];
@@ -2308,7 +2308,7 @@
             let agentFilter = String(document.getElementById('filtroAgenteVis9').value).trim();
 
             // Filtrado paramétrico estricto cruzado sobre la matriz del cubo expandido
-            let filteredData = rawDataV9.filter(d => {
+            let data = rawDataV9.filter(d => {
                 return String(d['PAIS'] || '').trim() === paisFilter &&
                        String(d['ANO'] || '').trim() === anoFilter &&
                        String(d['DEWEY PRINCIPAL'] || '').trim() === deweyFilter &&
@@ -2326,16 +2326,15 @@
                 });
             }
 
-            filteredData.forEach(d => {
+            data.forEach(d => {
                 let idm = d['IDIOMA_ORIGEN'];
                 let dw = d['NOMBRE_DEWEY'];
                 let val = parseInt(d['CANTIDAD'] || 0);
                 let topEditsStr = d['TOP_EDITORIALES'] || '';
 
                 if (idm && dw && val > 0) {
-                    // Agregamos un sufijo espacial invisible para diferenciar nodos de origen y destino en el árbol topológico
                     let sourceName = idm;
-                    let targetName = dw + ' ';
+                    let targetName = dw + ' '; // Sufijo de aislamiento topológico
 
                     nodesSet.add(sourceName);
                     nodesSet.add(targetName);
@@ -2355,6 +2354,7 @@
                 tooltip: {
                     trigger: 'item',
                     backgroundColor: 'rgba(255, 255, 255, 0.98)', borderColor: '#1F0F80', textStyle: { color: '#17142B' },
+                    extraCssText: 'box-shadow: 0px 4px 15px rgba(0,0,0,0.12); border-radius: 6px;',
                     formatter: function (params) {
                         if (params.dataType === 'node') {
                             let cleanNode = params.name.trim();
@@ -2373,7 +2373,7 @@
                         if (topEdits.length > 0) {
                             h += `<span style="color:#006DF7;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;">Top 5 Sellos Editoriales en este Canal:</span><br/>`;
                             topEdits.forEach((e, i) => {
-                                // El porcentaje se calcula en tiempo real respecto al total específico de la banda activa (Rigor Matemático)
+                                // Ponderación en tiempo real respecto al total específico de la banda activa (Rigor Absoluto)
                                 let pct = ((e.c / val) * 100).toFixed(1);
                                 h += `<div style="display:flex; justify-content:space-between; margin-top:4px; border-bottom:1px dotted #f0f0f0; padding-bottom:2px; gap:10px;">
                                         <span style="white-space: normal; line-height:1.2;"><b>${i+1}.</b> ${e.n}</span>
