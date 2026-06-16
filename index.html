@@ -2755,28 +2755,38 @@
 
 
         // =========================================================
-        // PARSEO COORDINADO EN PARALELO PARA ARCHIVOS FRAGMENTADOS (VIS8)
+        // PARSEO COORDINADO EN PARALELO PARA ARCHIVOS FRAGMENTADOS (VIS9)
         // =========================================================
-        let datosDivergencias1 = [];
-        let datosDivergencias2 = [];
-        let fragmentosDivergenciasCargados = 0;
+        let datosAnatomia1 = [];
+        let datosAnatomia2 = [];
+        let fragmentosAnatomiaCargados = 0;
 
-        function verificarYConsolidarDivergencias() {
-            fragmentosDivergenciasCargados++;
+        function verificarYConsolidarAnatomia() {
+            fragmentosAnatomiaCargados++;
             
-            // Cuando ambas promesas asíncronas de PapaParse concluyen con éxito, consolidamos en memoria
-            if (fragmentosDivergenciasCargados === 2) {
-                rawDataV8 = datosDivergencias1.concat(datosDivergencias2);
+            // Cuando ambas promesas asíncronas de PapaParse concluyen con éxito, consolidamos en memoria RAM
+            if (fragmentosAnatomiaCargados === 2) {
+                rawDataV9 = datosAnatomia1.concat(datosAnatomia2);
                 
-                let selectAno = document.getElementById('filtroAnoVis8');
-                let selectDewey = document.getElementById('filtroDeweyVis8');
-                let selectAgente = document.getElementById('filtroAgenteVis8');
+                let selectPais = document.getElementById('filtroPaisVis9');
+                let selectAno = document.getElementById('filtroAnoVis9');
+                let selectDewey = document.getElementById('filtroDeweyVis9');
+                let selectAgente = document.getElementById('filtroAgenteVis9');
                 
-                // Extracción indexada libre de registros duplicados
-                let embeddingAnos = [...new Set(rawDataV8.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
-                let embeddingDeweys = [...new Set(rawDataV8.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
+                // Extracción indexada y ordenamiento libre de registros duplicados
+                let embeddingPaises = [...new Set(rawDataV9.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'TODOS').sort();
+                let embeddingAnos = [...new Set(rawDataV9.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV9.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'TODOS').sort();
                 
-                // Inyección ordenada de opciones en el menú de Años
+                // Inyección ordenada de opciones en el menú de Ámbito Geográfico
+                embeddingPaises.forEach(p => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = p; 
+                    opt.innerHTML = p; 
+                    selectPais.appendChild(opt); 
+                });
+                
+                // Inyección ordenada de opciones en el menú de Año de Publicación
                 embeddingAnos.forEach(a => { 
                     let opt = document.createElement('option'); 
                     opt.value = a; 
@@ -2784,7 +2794,7 @@
                     selectAno.appendChild(opt); 
                 });
                 
-                // Inyección ordenada de opciones en el menú Dewey
+                // Inyección ordenada de opciones en el menú de Categoría Principal (Dewey)
                 embeddingDeweys.forEach(cat => { 
                     let opt = document.createElement('option'); 
                     opt.value = cat; 
@@ -2792,34 +2802,35 @@
                     selectDewey.appendChild(opt); 
                 });
 
-                // Registro unificado de escuchadores de eventos cruzados concurrentes
-                selectAno.addEventListener('change', renderVis8);
-                selectDewey.addEventListener('change', renderVis8);
-                selectAgente.addEventListener('change', renderVis8);
+                // Registro unificado de escuchadores de eventos cruzados concurrentes para la Vis 9
+                selectPais.addEventListener('change', renderVis9);
+                selectAno.addEventListener('change', renderVis9);
+                selectDewey.addEventListener('change', renderVis9);
+                selectAgente.addEventListener('change', renderVis9);
                 
-                // Renderizado inicial coordinado del gráfico de tornado
-                renderVis8();
+                // Renderizado inicial coordinado del Diagrama de Sankey Anatómico
+                renderVis9();
             }
         }
 
-        // Carga simultánea en hilos asíncronos paralelos de PapaParse
-        Papa.parse('Base_Divergencias_Parte1.csv', {
+        // Carga simultánea asíncrona paralela mediante hilos PapaParse
+        Papa.parse('Base_Anatomia_Parte1.csv', {
             download: true, 
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                datosDivergencias1 = results.data;
-                verificarYConsolidarDivergencias();
+                datosAnatomia1 = results.data;
+                verificarYConsolidarAnatomia();
             }
         });
 
-        Papa.parse('Base_Divergencias_Parte2.csv', {
+        Papa.parse('Base_Anatomia_Parte2.csv', {
             download: true, 
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                datosDivergencias2 = results.data;
-                verificarYConsolidarDivergencias();
+                datosAnatomia2 = results.data;
+                verificarYConsolidarAnatomia();
             }
         });
         
