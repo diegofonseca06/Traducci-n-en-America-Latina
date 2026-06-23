@@ -2439,7 +2439,7 @@
         });
 
         // =========================================================
-        // PARSEO E INYECCIÓN DE DATOS PARA SANKEY (VIS10)
+        // PARSEO E INYECCIÓN DE DATOS (Sankey con Filtro Cruzado de Dewey - Vis10)
         // =========================================================
         Papa.parse('Base_Sankey_Ultra_Resumida.csv', {
             download: true, 
@@ -2452,21 +2452,19 @@
                 let selectAno = document.getElementById('filtroAnoVis10');
                 let selectDewey = document.getElementById('filtroDeweyVis10');
                 
-                // Mapeo ordenado de dimensiones de filtrado sin duplicados
-                let paises = [...new Set(rawDataV10.map(d => d['PAIS']))].filter(p => p && p.trim() !== '' && p !== 'SIN DATO').sort();
-                let anos = [...new Set(rawDataV10.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort().reverse();
-                let deweys = [...new Set(rawDataV10.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                // Mapeo unificado aplicando .trim() para limpiar espacios invisibles en el cliente
+                let embeddingPaises = [...new Set(rawDataV10.map(d => String(d['PAIS']).trim()))].filter(p => p && p !== 'SIN DATO' && p !== 'TODOS').sort();
+                let embeddingAnos = [...new Set(rawDataV10.map(d => String(d['ANO']).trim()))].filter(a => a && a !== 'SIN DATO' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV10.map(d => String(d['DEWEY PRINCIPAL']).trim()))].filter(cat => cat && cat !== 'SIN DATO' && cat !== 'TODOS').sort();
+                
+                embeddingPaises.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p; selectPais.appendChild(opt); });
+                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
+                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
 
-                paises.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p; selectPais.appendChild(opt); });
-                anos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
-                deweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
-
-                // Asignación de manejadores reactivos
                 selectPais.addEventListener('change', renderVis10);
                 selectAno.addEventListener('change', renderVis10);
                 selectDewey.addEventListener('change', renderVis10);
                 
-                // Ejecución del renderizado inicial
                 renderVis10();
             }
         });
