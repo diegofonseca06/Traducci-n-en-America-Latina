@@ -2521,19 +2521,30 @@
                 let selectAno = document.getElementById('filtroAnoVis3');
                 let selectDewey = document.getElementById('filtroDeweyVis3');
                 
-                // Mapeo unificado y ordenado de dimensiones sin duplicados
-                let embeddingAnos = [...new Set(rawDataV3.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO').sort().reverse();
-                let embeddingDeweys = [...new Set(rawDataV3.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                // Mapeo unificado aplicando String() y .trim() para colapsar definitivamente las 10 categorías Dewey
+                let embeddingAnos = [...new Set(rawDataV3.map(d => String(d['ANO']).trim()))].filter(a => a && a !== 'SIN DATO' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV3.map(d => String(d['DEWEY PRINCIPAL']).trim()))].filter(cat => cat && cat !== 'SIN DATO' && cat !== 'TODOS').sort();
                 
-                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
-                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                embeddingAnos.forEach(a => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = a; 
+                    opt.innerHTML = a; 
+                    selectAno.appendChild(opt); 
+                });
+                
+                embeddingDeweys.forEach(cat => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = cat; 
+                    opt.innerHTML = cat; 
+                    selectDewey.appendChild(opt); 
+                });
                 
                 // Vinculación de escuchadores de cambio para filtros concurrentes
                 selectFlujo.addEventListener('change', renderVis3);
                 selectAno.addEventListener('change', renderVis3);
                 selectDewey.addEventListener('change', renderVis3);
                 
-                // Renderizado inicial coordinado
+                // Renderizado inicial coordinado de la gráfica
                 renderVis3();
             }
         });
