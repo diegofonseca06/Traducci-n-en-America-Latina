@@ -2470,7 +2470,7 @@
         });
 
         // =========================================================
-        // PARSEO E INYECCIÓN DE DATOS PARA BALANCE DE AGENTES (VIS1)
+        // PARSEO E INYECCIÓN DE DATOS (El Pulso Editorial - Vis1)
         // =========================================================
         Papa.parse('Base_Agentes_Ultra_Resumida.csv', {
             download: true, 
@@ -2482,19 +2482,28 @@
                 let selectAno = document.getElementById('filtroAnoVis1');
                 let selectDewey = document.getElementById('filtroDeweyVis1');
                 
-                // Mapeo unificado y ordenado de dimensiones de filtrado
-                let embeddingAnos = [...new Set(rawDataV1.map(d => d['ANO']))].filter(a => a && a.trim() !== '' && a !== 'SIN DATO' && a >= '2010' && a <= '2025').sort().reverse();
-                let embeddingDeweys = [...new Set(rawDataV1.map(d => d['DEWEY PRINCIPAL']))].filter(cat => cat && cat.trim() !== '' && cat !== 'SIN DATO').sort();
+                // Mapeo unificado aplicando .trim() para limpiar espacios y consolidar las 10 categorías reales
+                let embeddingAnos = [...new Set(rawDataV1.map(d => String(d['ANO']).trim()))].filter(a => a && a !== 'SIN DATO' && a !== 'TODOS').sort().reverse();
+                let embeddingDeweys = [...new Set(rawDataV1.map(d => String(d['DEWEY PRINCIPAL']).trim()))].filter(cat => cat && cat !== 'SIN DATO' && cat !== 'TODOS').sort();
                 
-                embeddingAnos.forEach(a => { let opt = document.createElement('option'); opt.value = a; opt.innerHTML = a; selectAno.appendChild(opt); });
-                embeddingDeweys.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.innerHTML = cat; selectDewey.appendChild(opt); });
+                embeddingAnos.forEach(a => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = a; 
+                    opt.innerHTML = a; 
+                    selectAno.appendChild(opt); 
+                });
                 
-                // Vinculación de manejadores reactivos simultáneos
-                selectAno.addEventListener('change', function(e) { renderVis1(e.target.value); });
-                selectDewey.addEventListener('change', function() { ejecutarFiltroYRenderVis1(); });
+                embeddingDeweys.forEach(cat => { 
+                    let opt = document.createElement('option'); 
+                    opt.value = cat; 
+                    opt.innerHTML = cat; 
+                    selectDewey.appendChild(opt); 
+                });
+
+                selectAno.addEventListener('change', ejecutarFiltroYRenderVis1);
+                selectDewey.addEventListener('change', ejecutarFiltroYRenderVis1);
                 
-                // Inicialización primaria del gráfico
-                renderVis1('TODOS');
+                ejecutarFiltroYRenderVis1();
             }
         });
 
